@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Read this before creating packages: https://chocolatey.org/docs/create-packages -->
-<!-- It is especially important to read the above link to understand additional requirements when publishing packages to the community feed aka dot org (https://chocolatey.org/packages). -->
+<!-- It is especially important to read the above link to understand additional requirements when publishing packages to the community feed aka dot org (https://community.chocolatey.org/packages). -->
 
 <!-- Test your packages in a test environment: https://github.com/chocolatey/chocolatey-test-environment -->
 
@@ -26,7 +26,7 @@ This is a nuspec. It mostly adheres to https://docs.nuget.org/create/Nuspec-Refe
     <!-- version should MATCH as closely as possible with the underlying software -->
     <!-- Is the version a prerelease of a version? https://docs.nuget.org/create/versioning#creating-prerelease-packages -->
     <!-- Note that unstable versions like 0.0.1 can be considered a released version, but it's possible that one can release a 0.0.1-beta before you release a 0.0.1 version. If the version number is final, that is considered a released version and not a prerelease. -->
-    <version>0.0.0</version>
+    <version>1.1.13</version>
     <!-- owners is a poor name for maintainers of the package. It sticks around by this name for compatibility reasons. It basically means you. -->
     <owners>Maurice Kevenaar</owners>
     <!-- ============================== -->
@@ -37,7 +37,7 @@ This is a nuspec. It mostly adheres to https://docs.nuget.org/create/Nuspec-Refe
     <authors>NotExpectedYet - OctoFarm</authors>
     <!-- projectUrl is required for the community feed -->
     <projectUrl>https://octofarm.net/</projectUrl>
-    <iconUrl>https://cdn.jsdelivr.net/gh/mkevenaar/chocolatey-packages@87a93849c61510562a982a91bec3798dbc28cf17/icons/octofarm.png</iconUrl>
+    <iconUrl>https://cdn.jsdelivr.net/gh/mkevenaar/chocolatey-packages@34c516e4abd5510c00334737fe156755adcbab72/icons/octofarm.png</iconUrl>
     <!-- copyright is usually years and software vendor, but not required for internal feeds -->
     <copyright>NotExpectedYet - OctoFarm</copyright>
     <tags>octofarm octoprint printfarm</tags>
@@ -53,17 +53,17 @@ This is a nuspec. It mostly adheres to https://docs.nuget.org/create/Nuspec-Refe
 
 OctoFarm is a web server and client combo for unifying multiple instances of Octoprint. You can manage and monitor as many instances as you want from a single interface giving you full control over your 3D printer farm.
 
-* 100% FREE AND OPEN SOURCE  
+* 100% FREE AND OPEN SOURCE
 All source code is available to check out and you get the entire feature set for free!
-* MANAGEMENT  
+* MANAGEMENT
 Manage and control every aspect of your OctoPrint run farm.
-* MONITORING  
+* MONITORING
 Keep an eye your entire farm from a selection of views.
-* HISTORY  
+* HISTORY
 Keep track of historical successful, failed or cancelled prints.
-* FILE MANAGER  
+* FILE MANAGER
 Quickly switch and manage all your printers file lists.
-* FILAMENT MANAGER  
+* FILAMENT MANAGER
 Keep track of your spool inventory and assign to print jobs.
 
 **Please Note**: This is an automatically updated package. If you find it is

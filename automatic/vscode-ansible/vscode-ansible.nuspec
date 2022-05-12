@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Read this before creating packages: https://chocolatey.org/docs/create-packages -->
-<!-- It is especially important to read the above link to understand additional requirements when publishing packages to the community feed aka dot org (https://chocolatey.org/packages). -->
+<!-- It is especially important to read the above link to understand additional requirements when publishing packages to the community feed aka dot org (https://community.chocolatey.org/packages). -->
 
 <!-- Test your packages in a test environment: https://github.com/chocolatey/chocolatey-test-environment -->
 
@@ -8,8 +8,8 @@
 This is a nuspec. It mostly adheres to https://docs.nuget.org/create/Nuspec-Reference. Chocolatey uses a special version of NuGet.Core that allows us to do more than was initially possible. As such there are certain things to be aware of:
 
 * the package xmlns schema url may cause issues with nuget.exe
-* Any of the following elements can ONLY be used by choco tools - projectSourceUrl, docsUrl, mailingListUrl, bugTrackerUrl, packageSourceUrl, provides, conflicts, replaces 
-* nuget.exe can still install packages with those elements but they are ignored. Any authoring tools or commands will error on those elements 
+* Any of the following elements can ONLY be used by choco tools - projectSourceUrl, docsUrl, mailingListUrl, bugTrackerUrl, packageSourceUrl, provides, conflicts, replaces
+* nuget.exe can still install packages with those elements but they are ignored. Any authoring tools or commands will error on those elements
 -->
 
 <!-- You can embed software files directly into packages, as long as you are not bound by distribution rights. -->
@@ -26,7 +26,7 @@ This is a nuspec. It mostly adheres to https://docs.nuget.org/create/Nuspec-Refe
     <!-- version should MATCH as closely as possible with the underlying software -->
     <!-- Is the version a prerelease of a version? https://docs.nuget.org/create/versioning#creating-prerelease-packages -->
     <!-- Note that unstable versions like 0.0.1 can be considered a released version, but it's possible that one can release a 0.0.1-beta before you release a 0.0.1 version. If the version number is final, that is considered a released version and not a prerelease. -->
-    <version>0.6.0</version>
+    <version>0.9.0</version>
     <!-- owners is a poor name for maintainers of the package. It sticks around by this name for compatibility reasons. It basically means you. -->
     <owners>Maurice Kevenaar</owners>
     <!-- ============================== -->
@@ -34,35 +34,40 @@ This is a nuspec. It mostly adheres to https://docs.nuget.org/create/Nuspec-Refe
     <!-- == SOFTWARE SPECIFIC SECTION == -->
     <!-- This section is about the software itself -->
     <title>Ansible VSCode Extension</title>
-    <authors>Microsoft</authors>
+    <authors>Red Hat</authors>
     <!-- projectUrl is required for the community feed -->
-    <projectUrl>https://marketplace.visualstudio.com/items?itemName=vscoss.vscode-ansible</projectUrl>
-    <iconUrl>https://cdn.jsdelivr.net/gh/mkevenaar/chocolatey-packages@0fe0f922978b905028efc1219ce4010667d9ad6f/icons/vscode-ansible.png</iconUrl>
+    <projectUrl>https://marketplace.visualstudio.com/items?itemName=redhat.ansible</projectUrl>
+    <iconUrl>https://cdn.jsdelivr.net/gh/mkevenaar/chocolatey-packages@436d3ec48c11e068a351c98590a9b3a54076829f/icons/vscode-ansible.png</iconUrl>
     <!-- copyright is usually years and software vendor, but not required for internal feeds -->
-    <copyright>Microsoft</copyright>
+    <copyright>Red Hat</copyright>
     <tags>vscode-ansible ansible extension vscode</tags>
-    <releaseNotes>https://marketplace.visualstudio.com/items/vscoss.vscode-ansible/changelog</releaseNotes>
-    <licenseUrl>https://marketplace.visualstudio.com/items/vscoss.vscode-ansible/license</licenseUrl>
+    <releaseNotes>https://marketplace.visualstudio.com/items/redhat.ansible/changelog</releaseNotes>
+    <licenseUrl>https://marketplace.visualstudio.com/items/redhat.ansible/license</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <packageSourceUrl>https://github.com/mkevenaar/chocolatey-packages/tree/master/automatic/vscode-ansible</packageSourceUrl>
-    <projectSourceUrl>https://github.com/VSChina/vscode-ansible</projectSourceUrl>
-    <docsUrl>https://github.com/VSChina/vscode-ansible/blob/master/README.md</docsUrl>
-    <bugTrackerUrl>https://github.com/VSChina/vscode-ansible/issues</bugTrackerUrl>
+    <projectSourceUrl>https://github.com/ansible/vscode-ansible</projectSourceUrl>
+    <docsUrl>https://github.com/ansible/vscode-ansible/blob/main/README.md</docsUrl>
+    <bugTrackerUrl>https://github.com/ansible/vscode-ansible/issues</bugTrackerUrl>
     <summary>VSCode extension for Ansible</summary>
-    <description><![CDATA[## Visual Studio Code extension for [Ansible](https://www.ansible.com/)
+    <description><![CDATA[## Ansible VS Code Extension by Red Hat
 
-The VSCode ansible extension is designed to increase developer productivity authoring, testing and using Ansible with Azure. The extension provides cool features around playbook authoring and execution. It supports running playbook from various places e.g. Docker, local installation, remote machines via ssh and [Cloud Shell](https://azure.microsoft.com/en-us/features/cloud-shell/).
+This extension adds language support for Ansible to
+[Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=redhat.ansible)
+and [OpenVSX](https://open-vsx.org/extension/redhat/ansible) compatible editors
+by leveraging
+[ansible-language-server](https://github.com/ansible/ansible-language-server).
+
 
 **Please Note**: This is an automatically updated package. If you find it is
 out of date by more than a day or two, please contact the maintainer(s) and
 let them know the package is no longer updating correctly.
 ]]></description>
-    <!-- =============================== -->  
+    <!-- =============================== -->
 
     <!-- Specifying dependencies and version ranges? https://docs.nuget.org/create/versioning#specifying-version-ranges-in-.nuspec-files -->
     <dependencies>
       <dependency id="chocolatey-vscode.extension" version="1.0.0" />
-      <dependency id="vscode" version="1.31.0" />
+      <dependency id="vscode" version="1.48.0" />
     </dependencies>
 
     <!--<provides>NOT YET IMPLEMENTED</provides>-->

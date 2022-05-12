@@ -1,4 +1,4 @@
-﻿# <img src="https://cdn.jsdelivr.net/gh/mkevenaar/chocolatey-packages@3b43537c8f99e1ea08563dbe1587c158c4f52e3c/icons/veeam-backup-and-replication-server.png" width="32" height="32"/> [![Veeam Backup & Replication Server](https://img.shields.io/chocolatey/v/veeam-backup-and-replication-server.svg?label=Veeam+Backup+%26+Replication+Server)](https://chocolatey.org/packages/veeam-backup-and-replication-server) [![Veeam Backup & Replication Server](https://img.shields.io/chocolatey/dt/veeam-backup-and-replication-server.svg)](https://chocolatey.org/packages/veeam-backup-and-replication-server)
+﻿# <img src="https://cdn.jsdelivr.net/gh/mkevenaar/chocolatey-packages@3b43537c8f99e1ea08563dbe1587c158c4f52e3c/icons/veeam-backup-and-replication-server.png" width="32" height="32"/> [![Veeam Backup & Replication Server](https://img.shields.io/chocolatey/v/veeam-backup-and-replication-server.svg?label=Veeam+Backup+%26+Replication+Server)](https://community.chocolatey.org/packages/veeam-backup-and-replication-server) [![Veeam Backup & Replication Server](https://img.shields.io/chocolatey/dt/veeam-backup-and-replication-server.svg)](https://community.chocolatey.org/packages/veeam-backup-and-replication-server)
 
 ## Usage
 
@@ -32,11 +32,11 @@ Veeam® Backup & Replication™ helps businesses achieve comprehensive data prot
 
 **NOTE** You do have to install a SQL Server before you can use this package.
 
-To have choco remember parameters on upgrade, be sure to set `choco feature enable -n=useRememberedArgumentsForUpgrades`.
-
 ### Package Parameters
 
-The package accepts the following optional parameters:
+To have choco remember parameters on upgrade, be sure to set `choco feature enable -n=useRememberedArgumentsForUpgrades`.
+
+This package accepts a lot of parameters. Some of them are required the installation. For the full list of parameters, please have a look at the [documentation](https://github.com/mkevenaar/chocolatey-packages/blob/master/automatic/veeam-backup-and-replication-server/PARAMETERS.md)
 
 * `/nfsDatastoreLocation` - Specifies the vPower cache folder to which the write cache will be stored. By default, Veeam Backup & Replication uses the folder on a volume with the maximum amount of free space, for example, C:\ProgramData\Veeam\Backup\NfsDatastore\.
 * `/backupPort` - Specifies a TCP port that will be used by the Veeam Backup Service. By default, port number 9392 is used.
@@ -60,7 +60,7 @@ let them know the package is no longer updating correctly.
 
 ## Links
 
-[Chocolatey Package Page](https://chocolatey.org/packages/veeam-backup-and-replication-server)
+[Chocolatey Package Page](https://community.chocolatey.org/packages/veeam-backup-and-replication-server)
 
 [Software Site](http://www.veeam.com/)
 

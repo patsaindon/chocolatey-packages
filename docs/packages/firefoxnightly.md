@@ -1,4 +1,4 @@
-﻿# <img src="https://cdn.jsdelivr.net/gh/mkevenaar/chocolatey-packages@972436b98f0066a91d8f6899e42a6ccf06c7acbf/icons/firefox-nightly.png" width="32" height="32"/> [![Firefox Nightly](https://img.shields.io/chocolatey/v/firefox-nightly.svg?label=Firefox+Nightly)](https://chocolatey.org/packages/firefox-nightly) [![Firefox Nightly](https://img.shields.io/chocolatey/dt/firefox-nightly.svg)](https://chocolatey.org/packages/firefox-nightly)
+﻿# <img src="https://cdn.jsdelivr.net/gh/mkevenaar/chocolatey-packages@972436b98f0066a91d8f6899e42a6ccf06c7acbf/icons/firefox-nightly.png" width="32" height="32"/> [![Firefox Nightly](https://img.shields.io/chocolatey/v/firefox-nightly.svg?label=Firefox+Nightly)](https://community.chocolatey.org/packages/firefox-nightly) [![Firefox Nightly](https://img.shields.io/chocolatey/dt/firefox-nightly.svg)](https://community.chocolatey.org/packages/firefox-nightly)
 
 ## Usage
 
@@ -32,9 +32,9 @@ Firefox Nightly builds are under active development and should be used only by a
 
 Every 6 weeks, Firefox developers take the current stable features of each build and introduce them into the next stable channel for further development. The Developer Edition is a special build containing features never moved forward since they would be rarely used by the average user and needlessly consume resources.
 
-- [Firefox](https://chocolatey.org/packages/firefox)
-- [Firefox Beta](https://chocolatey.org/packages/firefox-beta)
-- [Firefox Developer Edition](https://chocolatey.org/packages/firefox-dev)
+- [Firefox](https://community.chocolatey.org/packages/firefox)
+- [Firefox Beta](https://community.chocolatey.org/packages/firefox-beta)
+- [Firefox Developer Edition](https://community.chocolatey.org/packages/firefox-dev)
 - Firefox Nightly (you are here)
 
 [Forum](http://forums.mozillazine.org/viewforum.php?f=23)
@@ -48,7 +48,7 @@ let them know the package is no longer updating correctly.
 
 ## Links
 
-[Chocolatey Package Page](https://chocolatey.org/packages/firefox-nightly)
+[Chocolatey Package Page](https://community.chocolatey.org/packages/firefox-nightly)
 
 [Software Site](https://www.mozilla.org/firefox/nightly/)
 

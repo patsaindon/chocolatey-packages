@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Read this before creating packages: https://chocolatey.org/docs/create-packages -->
-<!-- It is especially important to read the above link to understand additional requirements when publishing packages to the community feed aka dot org (https://chocolatey.org/packages). -->
+<!-- It is especially important to read the above link to understand additional requirements when publishing packages to the community feed aka dot org (https://community.chocolatey.org/packages). -->
 
 <!-- Test your packages in a test environment: https://github.com/chocolatey/chocolatey-test-environment -->
 
@@ -26,7 +26,7 @@ This is a nuspec. It mostly adheres to https://docs.nuget.org/create/Nuspec-Refe
     <!-- version should MATCH as closely as possible with the underlying software -->
     <!-- Is the version a prerelease of a version? https://docs.nuget.org/create/versioning#creating-prerelease-packages -->
     <!-- Note that unstable versions like 0.0.1 can be considered a released version, but it's possible that one can release a 0.0.1-beta before you release a 0.0.1 version. If the version number is final, that is considered a released version and not a prerelease. -->
-    <version>10.0.1.4854</version>
+    <version>11.0.1.1261</version>
     <!-- owners is a poor name for maintainers of the package. It sticks around by this name for compatibility reasons. It basically means you. -->
     <owners>Maurice Kevenaar</owners>
     <!-- ============================== -->
@@ -40,8 +40,8 @@ This is a nuspec. It mostly adheres to https://docs.nuget.org/create/Nuspec-Refe
     <iconUrl>https://cdn.jsdelivr.net/gh/mkevenaar/chocolatey-packages@9c945e67b686ffd19927bdf96fcdf4f264a6dc41/icons/veeam-backup-and-replication-management.png</iconUrl>
     <!-- copyright is usually years and software vendor, but not required for internal feeds -->
     <copyright>Veeam Software AG</copyright>
-    <tags>veeam-backup-and-replication-console veeam console admin</tags>
-    <releaseNotes>https://www.veeam.com/veeam_backup_10_0_release_notes_rn.pdf</releaseNotes>
+    <tags>veeam-backup-and-replication-console vbr veeam console admin</tags>
+    <releaseNotes>https://www.veeam.com/veeam_backup_11_0_release_notes_rn.pdf</releaseNotes>
     <licenseUrl>https://www.veeam.com/eula.html</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <packageSourceUrl>https://github.com/mkevenaar/chocolatey-packages/tree/master/automatic/veeam-backup-and-replication-management</packageSourceUrl>
@@ -58,13 +58,13 @@ Veeam® Backup & Replication™ is a backup solution developed for VMware vSpher
 
 This package is a meta package. It will install the following software on your computer:
 
-- [Veeam Backup & Replication Console](https://chocolatey.org/packages/veeam-backup-and-replication-console)
-- [Veeam Explorer for Microsoft Active Directory](https://chocolatey.org/packages/veeam-explorer-for-microsoft-active-directory)
-- [Veeam Explorer for Microsoft Exchange](https://chocolatey.org/packages/veeam-explorer-for-microsoft-exchange)
-- [Veeam Explorer for Microsoft SharePoint](https://chocolatey.org/packages/veeam-explorer-for-microsoft-sharepoint)
-- [Veeam Explorer for Microsoft SQL Server](https://chocolatey.org/packages/veeam-explorer-for-microsoft-sql-server)
-- [Veeam Explorer for Microsoft Teams](https://chocolatey.org/packages/veeam-explorer-for-microsoft-teams)
-- [Veeam Explorer for Oracle](https://chocolatey.org/packages/veeam-explorer-for-oracle)
+- [Veeam Backup & Replication Console](https://community.chocolatey.org/packages/veeam-backup-and-replication-console)
+- [Veeam Explorer for Microsoft Active Directory](https://community.chocolatey.org/packages/veeam-explorer-for-microsoft-active-directory)
+- [Veeam Explorer for Microsoft Exchange](https://community.chocolatey.org/packages/veeam-explorer-for-microsoft-exchange)
+- [Veeam Explorer for Microsoft SharePoint](https://community.chocolatey.org/packages/veeam-explorer-for-microsoft-sharepoint)
+- [Veeam Explorer for Microsoft SQL Server](https://community.chocolatey.org/packages/veeam-explorer-for-microsoft-sql-server)
+- [Veeam Explorer for Microsoft Teams](https://community.chocolatey.org/packages/veeam-explorer-for-microsoft-teams)
+- [Veeam Explorer for Oracle](https://community.chocolatey.org/packages/veeam-explorer-for-oracle)
 
 **Please Note**: This is an automatically updated package. If you find it is
 out of date by more than a day or two, please contact the maintainer(s) and
@@ -74,13 +74,13 @@ let them know the package is no longer updating correctly.
 
     <!-- Specifying dependencies and version ranges? https://docs.nuget.org/create/versioning#specifying-version-ranges-in-.nuspec-files -->
     <dependencies>
-      <dependency id="veeam-backup-and-replication-console" version="[10.0.1.4854]" />
-      <dependency id="veeam-explorer-for-microsoft-active-directory" version="[10.0.1.4854]" />
-      <dependency id="veeam-explorer-for-microsoft-exchange" version="[10.0.1.4854]" />
-      <dependency id="veeam-explorer-for-microsoft-sharepoint" version="[10.0.1.4854]" />
-      <dependency id="veeam-explorer-for-microsoft-sql-server" version="[10.0.1.4854]" />
-      <dependency id="veeam-explorer-for-microsoft-teams" version="[10.0.1.4854]" />
-      <dependency id="veeam-explorer-for-oracle" version="[10.0.1.4854]" />
+      <dependency id="veeam-backup-and-replication-console" version="[11.0.1.1261]" />
+      <dependency id="veeam-explorer-for-microsoft-active-directory" version="[11.0.1.1261]" />
+      <dependency id="veeam-explorer-for-microsoft-exchange" version="[11.0.1.1261]" />
+      <dependency id="veeam-explorer-for-microsoft-sharepoint" version="[11.0.1.1261]" />
+      <dependency id="veeam-explorer-for-microsoft-sql-server" version="[11.0.1.1261]" />
+      <dependency id="veeam-explorer-for-microsoft-teams" version="[11.0.1.1261]" />
+      <dependency id="veeam-explorer-for-oracle" version="[11.0.1.1261]" />
     </dependencies>
 
     <!--<provides>NOT YET IMPLEMENTED</provides>-->

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Read this before creating packages: https://chocolatey.org/docs/create-packages -->
-<!-- It is especially important to read the above link to understand additional requirements when publishing packages to the community feed aka dot org (https://chocolatey.org/packages). -->
+<!-- It is especially important to read the above link to understand additional requirements when publishing packages to the community feed aka dot org (https://community.chocolatey.org/packages). -->
 
 <!-- Test your packages in a test environment: https://github.com/chocolatey/chocolatey-test-environment -->
 
@@ -8,8 +8,8 @@
 This is a nuspec. It mostly adheres to https://docs.nuget.org/create/Nuspec-Reference. Chocolatey uses a special version of NuGet.Core that allows us to do more than was initially possible. As such there are certain things to be aware of:
 
 * the package xmlns schema url may cause issues with nuget.exe
-* Any of the following elements can ONLY be used by choco tools - projectSourceUrl, docsUrl, mailingListUrl, bugTrackerUrl, packageSourceUrl, provides, conflicts, replaces 
-* nuget.exe can still install packages with those elements but they are ignored. Any authoring tools or commands will error on those elements 
+* Any of the following elements can ONLY be used by choco tools - projectSourceUrl, docsUrl, mailingListUrl, bugTrackerUrl, packageSourceUrl, provides, conflicts, replaces
+* nuget.exe can still install packages with those elements but they are ignored. Any authoring tools or commands will error on those elements
 -->
 
 <!-- You can embed software files directly into packages, as long as you are not bound by distribution rights. -->
@@ -26,7 +26,7 @@ This is a nuspec. It mostly adheres to https://docs.nuget.org/create/Nuspec-Refe
     <!-- version should MATCH as closely as possible with the underlying software -->
     <!-- Is the version a prerelease of a version? https://docs.nuget.org/create/versioning#creating-prerelease-packages -->
     <!-- Note that unstable versions like 0.0.1 can be considered a released version, but it's possible that one can release a 0.0.1-beta before you release a 0.0.1 version. If the version number is final, that is considered a released version and not a prerelease. -->
-    <version>4.4.5</version>
+    <version>6.0.0-rc5</version>
     <!-- owners is a poor name for maintainers of the package. It sticks around by this name for compatibility reasons. It basically means you. -->
     <owners>Maurice Kevenaar</owners>
     <!-- ============================== -->
@@ -41,11 +41,11 @@ This is a nuspec. It mostly adheres to https://docs.nuget.org/create/Nuspec-Refe
     <!-- copyright is usually years and software vendor, but not required for internal feeds -->
     <copyright>MongoDB Inc</copyright>
     <tags>cli database nosql admin</tags>
-    <releaseNotes>http://docs.mongodb.org/master/release-notes/4.4/</releaseNotes>
+    <releaseNotes>https://docs.mongodb.org/master/release-notes/6.0/</releaseNotes>
     <licenseUrl>https://www.mongodb.com/community/licensing</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <packageSourceUrl>https://github.com/mkevenaar/chocolatey-packages/tree/master/automatic/mongodb</packageSourceUrl>
-    <docsUrl>https://docs.mongodb.com/</docsUrl>
+    <docsUrl>https://www.mongodb.com/docs/</docsUrl>
     <projectSourceUrl>https://github.com/mongodb/mongo</projectSourceUrl>
     <bugTrackerUrl>https://github.com/mongodb/mongo/wiki/Submit-Bug-Reports</bugTrackerUrl>
     <mailingListUrl>https://groups.google.com/forum/#!forum/mongodb-user</mailingListUrl>
@@ -71,11 +71,11 @@ out of date by more than a day or two, please contact the maintainer(s) and
 let them know the package is no longer updating correctly.
 
 ]]></description>
-    <!-- =============================== -->  
+    <!-- =============================== -->
 
     <!-- Specifying dependencies and version ranges? https://docs.nuget.org/create/versioning#specifying-version-ranges-in-.nuspec-files -->
     <dependencies>
-      <dependency id="mongodb.install" version="[4.4.5]" />
+      <dependency id="mongodb.install" version="[6.0.0-rc5]" />
     </dependencies>
 
     <!--<provides>NOT YET IMPLEMENTED</provides>-->

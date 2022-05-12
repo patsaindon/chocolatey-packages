@@ -61,13 +61,15 @@
         url: /packages/dymolabel.html
       - page: "Elasticsearch"
         url: /packages/elasticsearch.html
+      - page: "Etcher"
+        url: /packages/etcher.html
       - page: "Evernote"
         url: /packages/evernote.html
       - page: "ExifTool"
         url: /packages/exiftool.html
       - page: "FileZilla Server"
         url: /packages/filezilla.server.html
-      - page: "Firefox Developer Edition"
+      - page: "Firefox Beta"
         url: /packages/firefox.html
       - page: "Firefox Nightly"
         url: /packages/firefoxnightly.html
@@ -75,6 +77,8 @@
         url: /packages/gamecollector.html
       - page: "JetBrains GoLand"
         url: /packages/goland.html
+      - page: "Google Drive"
+        url: /packages/googledrive.html
       - page: "Hangouts Chat (Install)"
         url: /packages/googlehangoutschat.html
       - page: "Grafana"
@@ -107,6 +111,10 @@
         url: /packages/jetbrainstoolbox.html
       - page: "JetBrains YouTrack"
         url: /packages/jetbrainsyoutrack.html
+      - page: "KeyStore Explorer (Portable)"
+        url: /packages/keystoreexplorer.portable.html
+      - page: "Kibana"
+        url: /packages/kibana.html
       - page: "LastPass"
         url: /packages/lastpass.html
       - page: "MariaDB"
@@ -233,6 +241,8 @@
         url: /packages/ultraiso.html
       - page: "UltraVNC"
         url: /packages/ultravnc.html
+      - page: "Veeam Agent for Microsoft Windows"
+        url: /packages/veeamagent.html
       - page: "Veeam Backup & Replication Catalog"
         url: /packages/veeambackupandreplicationcatalog.html
       - page: "Veeam Backup & Replication Console"
@@ -245,27 +255,45 @@
         url: /packages/veeambackupandreplicationmanagement.html
       - page: "Veeam Backup & Replication Server"
         url: /packages/veeambackupandreplicationserver.html
-      - page: "Veeam Backup for Microsoft Office 365"
+      - page: "Veeam Backup for Microsoft 365"
+        url: /packages/veeambackupformicrosoft365.html
+      - page: "Veeam Backup for Microsoft 365 Console"
+        url: /packages/veeambackupformicrosoft365console.html
+      - page: "Veeam Backup Microsoft 365 ISO downloader"
+        url: /packages/veeambackupformicrosoft365iso.html
+      - page: "Veeam Backup for Microsoft 365 Management Console"
+        url: /packages/veeambackupformicrosoft365management.html
+      - page: "Veeam Backup for Microsoft 365 REST API & Restore Portal"
+        url: /packages/veeambackupformicrosoft365restapi.html
+      - page: "Veeam Backup for Microsoft 365 Server"
+        url: /packages/veeambackupformicrosoft365server.html
+      - page: "[Deprecated] Veeam Backup for Microsoft Office 365"
         url: /packages/veeambackupformicrosoftoffice365.html
-      - page: "Veeam Backup for Microsoft Office 365 Console"
+      - page: "[Deprecated] Veeam Backup for Microsoft Office 365 Console"
         url: /packages/veeambackupformicrosoftoffice365console.html
-      - page: "Veeam Backup for Microsoft Office 365 Management Console"
+      - page: "[Deprecated] Veeam Backup for Microsoft Office 365 Management Console"
         url: /packages/veeambackupformicrosoftoffice365management.html
       - page: "Veeam Explorer for Microsoft Active Directory"
         url: /packages/veeamexplorerformicrosoftactivedirectory.html
       - page: "Veeam Explorer for Microsoft Exchange"
         url: /packages/veeamexplorerformicrosoftexchange.html
-      - page: "Veeam Explorer for Microsoft Exchange for Microsoft o365"
+      - page: "Veeam Explorer for Microsoft Exchange for Microsoft 365"
+        url: /packages/veeamexplorerformicrosoftexchangem365.html
+      - page: "[Deprecated] Veeam Explorer for Microsoft Exchange for Microsoft o365"
         url: /packages/veeamexplorerformicrosoftexchangeo365.html
       - page: "Veeam Explorer for Microsoft SharePoint"
         url: /packages/veeamexplorerformicrosoftsharepoint.html
-      - page: "Veeam Explorer for Microsoft SharePoint for Microsoft o365"
+      - page: "Veeam Explorer for Microsoft SharePoint for Microsoft 365"
+        url: /packages/veeamexplorerformicrosoftsharepointm365.html
+      - page: "[Deprecated] Veeam Explorer for Microsoft SharePoint for Microsoft o365"
         url: /packages/veeamexplorerformicrosoftsharepointo365.html
       - page: "Veeam Explorer for Microsoft SQL Server"
         url: /packages/veeamexplorerformicrosoftsqlserver.html
       - page: "Veeam Explorer for Microsoft Teams"
         url: /packages/veeamexplorerformicrosoftteams.html
-      - page: "Veeam Explorer for Microsoft Teams for Microsoft o365"
+      - page: "Veeam Explorer for Microsoft Teams for Microsoft 365"
+        url: /packages/veeamexplorerformicrosoftteamsm365.html
+      - page: "[Deprecated] Veeam Explorer for Microsoft Teams for Microsoft o365"
         url: /packages/veeamexplorerformicrosoftteamso365.html
       - page: "Veeam Explorer for Oracle"
         url: /packages/veeamexplorerfororacle.html
@@ -281,6 +309,18 @@
         url: /packages/veeamonereporterserver.html
       - page: "Veeam ONE Reporter Web UI"
         url: /packages/veeamonereporterweb.html
+      - page: "Veeam Service Provider Console ConnectWise Automate Plugin"
+        url: /packages/veeamserviceproviderconsoleconnectwiseautomateplugin.html
+      - page: "Veeam Service Provider Console Application Server for Veeam ConnectWise Manage Plugin"
+        url: /packages/veeamserviceproviderconsoleconnectwisemanageservice.html
+      - page: "Veeam Service Provider Console Application Server Web UI for Veeam ConnectWise Manage Plugin"
+        url: /packages/veeamserviceproviderconsoleconnectwisemanagewebui.html
+      - page: "Veeam Service Provider Console ISO downloader"
+        url: /packages/veeamserviceproviderconsoleiso.html
+      - page: "Veeam Service Provider Console Application Server"
+        url: /packages/veeamserviceproviderconsoleserver.html
+      - page: "Veeam Service Provider Console WebUI"
+        url: /packages/veeamserviceproviderconsolewebui.html
       - page: "Veusz (Install)"
         url: /packages/veusz.html
       - page: "Viber"

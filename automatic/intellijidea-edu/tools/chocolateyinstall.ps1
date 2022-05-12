@@ -1,8 +1,8 @@
 ﻿$ErrorActionPreference = 'Stop';
 
 $toolsDir     = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
-$url = 'https://download.jetbrains.com/idea/ideaIE-2021.1.exe' 
-$checksum     = '20aaa70a7974c27e2db9c3508cc7a00b4d77d065f292067032245b66e8ff08d2'
+$url = 'https://download.jetbrains.com/idea/ideaIE-2022.1.exe' 
+$checksum     = '031d04135b34aee525d1297067394c6c6160d5de88429a4d31f225a32348f49f'
 $checksumType = 'sha256'
 
 # Workaround for https://youtrack.jetbrains.com/issue/IDEA-202935

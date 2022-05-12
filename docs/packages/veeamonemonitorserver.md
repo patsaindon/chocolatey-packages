@@ -1,4 +1,4 @@
-﻿# <img src="https://cdn.jsdelivr.net/gh/mkevenaar/chocolatey-packages@aa04db8e6809ba3e4dc22d3320103be9ca70d4c4/icons/veeam-one-monitor-server.png" width="32" height="32"/> [![Veeam ONE Monitor Server](https://img.shields.io/chocolatey/v/veeam-one-monitor-server.svg?label=Veeam+ONE+Monitor+Server)](https://chocolatey.org/packages/veeam-one-monitor-server) [![Veeam ONE Monitor Server](https://img.shields.io/chocolatey/dt/veeam-one-monitor-server.svg)](https://chocolatey.org/packages/veeam-one-monitor-server)
+﻿# <img src="https://cdn.jsdelivr.net/gh/mkevenaar/chocolatey-packages@aa04db8e6809ba3e4dc22d3320103be9ca70d4c4/icons/veeam-one-monitor-server.png" width="32" height="32"/> [![Veeam ONE Monitor Server](https://img.shields.io/chocolatey/v/veeam-one-monitor-server.svg?label=Veeam+ONE+Monitor+Server)](https://community.chocolatey.org/packages/veeam-one-monitor-server) [![Veeam ONE Monitor Server](https://img.shields.io/chocolatey/dt/veeam-one-monitor-server.svg)](https://community.chocolatey.org/packages/veeam-one-monitor-server)
 
 ## Usage
 
@@ -36,7 +36,7 @@ You'll need an SQL Server (express) installed. It's not required to have this in
 
 This package requires you to install the IIS Windows feature and WAS Configuration API feature. You can install these by executing `choco install IIS-WebServer WAS-ConfigurationAPI --source windowsfeatures`
 
-After installing this package, the [Veeam ONE Reporter Server](https://chocolatey.org/packages/veeam-one-reporter-server) package must be installed. Package parameters are not passed to depended packages, therefore it's not added as a dependency. You must install this package manually on the same machine for Veeam ONE to work.
+After installing this package, the [Veeam ONE Reporter Server](https://community.chocolatey.org/packages/veeam-one-reporter-server) package must be installed. Package parameters are not passed to depended packages, therefore it's not added as a dependency. You must install this package manually on the same machine for Veeam ONE to work.
 
 ### Package Parameters
 
@@ -76,7 +76,7 @@ let them know the package is no longer updating correctly.
 
 ## Links
 
-[Chocolatey Package Page](https://chocolatey.org/packages/veeam-one-monitor-server)
+[Chocolatey Package Page](https://community.chocolatey.org/packages/veeam-one-monitor-server)
 
 [Software Site](http://www.veeam.com/)
 

@@ -1,8 +1,8 @@
 ﻿$ErrorActionPreference = 'Stop';
 
 $toolsDir     = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
-$url          = 'http://cdn.sa.services.tomtom.com/static/sa/Windows/InstallTomTomMyDriveConnect.exe'
-$checksum     = 'E2C5614D3AFFAEBBB214AC71C5D8FDA46E9FBAFBC50CCF6528F3F51DB6405E5D'
+$url          = 'https://cdn.sa.services.tomtom.com/static/sa/Windows/InstallTomTomMyDriveConnect.exe'
+$checksum     = '297D828238770AB9416E80315A1A43E163D75E9C87B8F3520AE15659859F45B9'
 $checksumType = 'sha256'
 
 $packageArgs = @{

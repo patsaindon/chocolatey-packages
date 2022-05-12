@@ -1,8 +1,8 @@
 ﻿$ErrorActionPreference = 'Stop';
 
 $toolsDir       = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
-$fileName       = "$toolsDir\PowerToysSetup-0.37.0-x64.exe"
-$version        = "0.37.0"
+$fileName       = "$toolsDir\PowerToysSetup-0.58.0-x64.exe"
+$version        = "0.58.0"
 
 $WindowsVersion=[Environment]::OSVersion.Version
 if ($WindowsVersion.Major -ne "10") {
@@ -19,7 +19,7 @@ $packageArgs = @{
   softwareName  = 'PowerToys*'
   file          = $fileName
   fileType      = 'exe'
-  silentArgs    = "--silent --skip_dotnet_install"
+  silentArgs    = "-silent"
   validExitCodes= @(0,1641,3010)
 }
 

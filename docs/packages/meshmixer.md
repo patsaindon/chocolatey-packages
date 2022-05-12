@@ -1,4 +1,4 @@
-﻿# <img src="https://cdn.jsdelivr.net/gh/mkevenaar/chocolatey-packages@6b940fe0b9134a855b5aa1c0f35ed69cb12ea13a/icons/meshmixer.png" width="32" height="32"/> [![Meshmixer](https://img.shields.io/chocolatey/v/meshmixer.svg?label=Meshmixer)](https://chocolatey.org/packages/meshmixer) [![Meshmixer](https://img.shields.io/chocolatey/dt/meshmixer.svg)](https://chocolatey.org/packages/meshmixer)
+﻿# <img src="https://cdn.jsdelivr.net/gh/mkevenaar/chocolatey-packages@6b940fe0b9134a855b5aa1c0f35ed69cb12ea13a/icons/meshmixer.png" width="32" height="32"/> [![Meshmixer](https://img.shields.io/chocolatey/v/meshmixer.svg?label=Meshmixer)](https://community.chocolatey.org/packages/meshmixer) [![Meshmixer](https://img.shields.io/chocolatey/dt/meshmixer.svg)](https://community.chocolatey.org/packages/meshmixer)
 
 ## Usage
 
@@ -26,24 +26,24 @@ Meshmixer is state-of-the-art software for working with triangle meshes. Do you 
 
 ## Features
 
- - Drag-and-Drop Mesh Mixing
- - 3D Sculpting and Surface Stamping
- - Robust Convert-to-Solid for 3D printing
- - 3D Patterns and Lattices
- - Hollowing (with escape holes!)
- - Branching Support Structures for 3D printing
- - Automatic Print Bed Orientation Optimization, Layout and Packing
- - Advanced selection tools including brushing, surface-lasso, and constraints
- - Remeshing and Mesh Simplification/Reducing
- - Mesh Smoothing and Free-Form Deformations
- - Hole Filling, Bridging, Boundary Zippering, and Auto-Repair
- - Plane Cuts, Mirroring, and Booleans
- - Extrusions, Offset Surfaces, and Project-to-Target-Surface
- - Interior Tubes and Channels
- - Precise 3D Positioning with Pivots
- - Automatic Alignment of Surfaces
- - 3D Measurements
- - Stability and Thickness Analysis
+- Drag-and-Drop Mesh Mixing
+- 3D Sculpting and Surface Stamping
+- Robust Convert-to-Solid for 3D printing
+- 3D Patterns and Lattices
+- Hollowing (with escape holes!)
+- Branching Support Structures for 3D printing
+- Automatic Print Bed Orientation Optimization, Layout and Packing
+- Advanced selection tools including brushing, surface-lasso, and constraints
+- Remeshing and Mesh Simplification/Reducing
+- Mesh Smoothing and Free-Form Deformations
+- Hole Filling, Bridging, Boundary Zippering, and Auto-Repair
+- Plane Cuts, Mirroring, and Booleans
+- Extrusions, Offset Surfaces, and Project-to-Target-Surface
+- Interior Tubes and Channels
+- Precise 3D Positioning with Pivots
+- Automatic Alignment of Surfaces
+- 3D Measurements
+- Stability and Thickness Analysis
 
 ## Notes
 
@@ -53,9 +53,10 @@ This package will install in the default Windows program directory, and not in C
 out of date by more than a day or two, please contact the maintainer(s) and
 let them know the package is no longer updating correctly.
 
+
 ## Links
 
-[Chocolatey Package Page](https://chocolatey.org/packages/meshmixer)
+[Chocolatey Package Page](https://community.chocolatey.org/packages/meshmixer)
 
 [Software Site](http://www.meshmixer.com/)
 
