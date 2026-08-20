@@ -1,0 +1,33 @@
+name: Promote to Production
+# See docs/architecture.md section 9.4. Promotes the exact .nupkg already in
+# staging (by content hash) — this workflow must never rebuild the package.
+
+on:
+  workflow_dispatch:
+    inputs:
+      package_id:
+        description: "Package ID to promote"
+        required: true
+      version:
+        description: "Version to promote"
+        required: true
+
+jobs:
+  promote:
+    runs-on: [self-hosted, windows]
+    environment: production-feed   # configure required reviewers on this Environment
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy package by content hash from staging to production
+        shell: pwsh
+        env:
+          STAGING_FEED_URL: ${{ secrets.STAGING_FEED_URL }}
+          PRODUCTION_FEED_URL: ${{ secrets.PRODUCTION_FEED_URL }}
+          PRODUCTION_API_KEY: ${{ secrets.PRODUCTION_API_KEY }}
+        run: |
+          ./scripts/promote-package.ps1 `
+            -PackageId ${{ github.event.inputs.package_id }} `
+            -Version ${{ github.event.inputs.version }} `
+            -SourceFeed $env:STAGING_FEED_URL `
+            -TargetFeed $env:PRODUCTION_FEED_URL

@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: CHANGE_ME
+owner: CHANGE_ME                  # owning team, drives notification routing
+notes: ""

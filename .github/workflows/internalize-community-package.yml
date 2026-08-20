@@ -1,0 +1,44 @@
+name: Internalize Community Package
+# See docs/architecture.md section 9.1 for the full workflow design.
+# This is a Phase 1 skeleton — fill in scan/promote scripts before relying on it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      package_id:
+        description: "Chocolatey package ID to internalize"
+        required: true
+      version:
+        description: "Pinned version, or 'latest'"
+        required: false
+        default: "latest"
+
+jobs:
+  internalize:
+    runs-on: [self-hosted, windows, choco-internalize]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Internalize package
+        shell: pwsh
+        run: |
+          choco download ${{ github.event.inputs.package_id }} `
+            --internalize --source="https://community.chocolatey.org/api/v2/" `
+            --internalize-all-urls --version=${{ github.event.inputs.version }}
+
+      - name: Scan binaries
+        shell: pwsh
+        run: ./scripts/scan-package.ps1 -PackagePath .\packages\
+
+      - name: Smoke test install
+        shell: pwsh
+        run: |
+          choco install ${{ github.event.inputs.package_id }} -s .\packages\ --force -y
+
+      - name: Push to staging feed
+        shell: pwsh
+        env:
+          STAGING_FEED_URL: ${{ secrets.STAGING_FEED_URL }}
+          STAGING_API_KEY: ${{ secrets.STAGING_API_KEY }}
+        run: |
+          choco push .\packages\*.nupkg --source=$env:STAGING_FEED_URL --api-key=$env:STAGING_API_KEY

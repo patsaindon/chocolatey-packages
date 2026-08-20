@@ -1,0 +1,9 @@
+# Folder-level review routing for the monorepo (docs/architecture.md section 6.1).
+# Add one line per package folder once an owning team is assigned in its
+# metadata.yml / internalize.yml `owner` field, e.g.:
+#
+# /internal/acme-launcher/    @your-org/platform-engineering
+# /internalized/7zip/         @your-org/platform-engineering
+#
+# Fallback: platform team reviews anything not otherwise covered.
+* @your-org/platform-engineering
