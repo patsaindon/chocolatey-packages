@@ -32,7 +32,12 @@ jobs:
             'download', '${{ github.event.inputs.package_id }}',
             '--internalize',
             '--source=https://community.chocolatey.org/api/v2/',
-            '--internalize-all-urls'
+            '--internalize-all-urls',
+            # choco download's own default output dir is .\download\, not
+            # .\packages\ — pin it explicitly so every later step (scan,
+            # smoke test, push) can rely on a fixed, known location. Same
+            # --outputdirectory spelling as choco pack in publish-internal-package.yml.
+            '--outputdirectory=.\packages\'
           )
           $version = '${{ github.event.inputs.version }}'
           if ($version -and $version -ne 'latest') {
