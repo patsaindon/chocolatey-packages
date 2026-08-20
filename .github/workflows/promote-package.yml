@@ -1,0 +1,45 @@
+name: Promote to Production
+# See docs/architecture.md section 9.4. Promotes the exact .nupkg already in
+# staging (by content hash) — this workflow must never rebuild the package.
+# Implemented against Nexus Repository OSS (scripts/promote-package.ps1).
+
+on:
+  workflow_dispatch:
+    inputs:
+      package_id:
+        description: "Package ID to promote"
+        required: true
+      version:
+        description: "Version to promote"
+        required: true
+
+env:
+  # Hosted repo names as provisioned in Nexus — override here if yours differ
+  # from the docs/architecture.md section 8 naming convention.
+  STAGING_REPO_NAME: choco-staging
+  PRODUCTION_REPO_NAME: choco-prod
+
+jobs:
+  promote:
+    runs-on: [self-hosted, windows]
+    environment: production-feed   # configure required reviewers on this Environment
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy package by content hash from staging to production
+        shell: pwsh
+        env:
+          NEXUS_BASE_URL: ${{ secrets.NEXUS_BASE_URL }}
+          NEXUS_READ_USER: ${{ secrets.NEXUS_READ_USER }}
+          NEXUS_READ_PASSWORD: ${{ secrets.NEXUS_READ_PASSWORD }}
+          # Scoped to the production repo only — never available to the
+          # internalize/publish-internal workflows. See docs/architecture.md
+          # section 6.6 / 12.
+          PRODUCTION_API_KEY: ${{ secrets.PRODUCTION_API_KEY }}
+        run: |
+          ./scripts/promote-package.ps1 `
+            -PackageId ${{ github.event.inputs.package_id }} `
+            -Version ${{ github.event.inputs.version }} `
+            -NexusBaseUrl $env:NEXUS_BASE_URL `
+            -SourceRepo $env:STAGING_REPO_NAME `
+            -TargetRepo $env:PRODUCTION_REPO_NAME

@@ -1,0 +1,3 @@
+# Build/scan output from local workflow runs — never committed.
+packages/
+*.nupkg

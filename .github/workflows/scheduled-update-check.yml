@@ -1,0 +1,29 @@
+name: Check for Upstream Updates
+# See docs/architecture.md section 9.2. Runs on a schedule and opens
+# version-bump PRs for internalized/**/internalize.yml manifests that
+# opt into autoUpdateCheck.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # weekly, Monday 06:00
+  workflow_dispatch: {}
+
+permissions:
+  contents: write        # open-version-bump-prs.ps1 pushes bump branches
+  pull-requests: write    # ...and opens PRs for them
+
+jobs:
+  check-updates:
+    runs-on: [self-hosted, windows]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare pinned vs. upstream versions
+        shell: pwsh
+        run: ./scripts/check-upstream-versions.ps1 -ManifestDir .\internalized\
+
+      - name: Open PRs for outdated packages
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./scripts/open-version-bump-prs.ps1

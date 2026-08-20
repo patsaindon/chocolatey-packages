@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>CHANGE_ME</id>
+    <version>0.0.0</version>
+    <title>CHANGE_ME</title>
+    <authors>CHANGE_ME</authors>
+    <owners>CHANGE_ME</owners>
+    <projectUrl></projectUrl>
+    <description>CHANGE_ME</description>
+    <tags>internal</tags>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
