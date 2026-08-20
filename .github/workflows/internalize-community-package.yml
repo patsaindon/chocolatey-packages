@@ -21,29 +21,47 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Internalize package
+      - name: Resolve version to internalize
+        id: resolve_version
         shell: pwsh
         run: |
           # choco's --version flag wants an actual version string; it does
-          # not understand the literal word "latest". Our manifests/inputs
-          # use "latest" as our own convention meaning "don't pin" — that
-          # means omitting --version entirely so choco resolves latest itself.
-          $chocoArgs = @(
-            'download', '${{ github.event.inputs.package_id }}',
-            '--internalize',
-            '--source=https://community.chocolatey.org/api/v2/',
-            '--internalize-all-urls',
-            # choco download's own default output dir is .\download\, not
-            # .\packages\ — pin it explicitly so every later step (scan,
-            # smoke test, push) can rely on a fixed, known location. Same
-            # --outputdirectory spelling as choco pack in publish-internal-package.yml.
-            '--outputdirectory=.\packages\'
-          )
-          $version = '${{ github.event.inputs.version }}'
-          if ($version -and $version -ne 'latest') {
-            $chocoArgs += "--version=$version"
+          # not understand the literal word "latest" (our own manifest/input
+          # convention meaning "don't pin"). Resolve the real version up
+          # front via `choco search` rather than letting `choco download`
+          # silently pick one — this way the run log and downstream steps
+          # both know exactly what got internalized.
+          $packageId = '${{ github.event.inputs.package_id }}'
+          $requested = '${{ github.event.inputs.version }}'
+
+          if ($requested -and $requested -ne 'latest') {
+            $resolved = $requested
+            Write-Host "Using requested version: $resolved"
+          } else {
+            # -r (limitoutput) prints one 'id|version' line per exact match —
+            # stable/documented short flag, unlike some of choco's longer
+            # option spellings which vary between hyphenated/non-hyphenated.
+            $searchOutput = choco search $packageId --exact --source="https://community.chocolatey.org/api/v2/" -r
+            if ($LASTEXITCODE -ne 0 -or -not $searchOutput) {
+              throw "choco search found no match for '$packageId' in the Community Repository."
+            }
+            $resolved = (@($searchOutput)[0] -split '\|')[-1].Trim()
+            if (-not $resolved) {
+              throw "Could not parse a version out of choco search output: $searchOutput"
+            }
+            Write-Host "Resolved latest version: $resolved"
           }
-          choco @chocoArgs
+
+          "version=$resolved" >> $env:GITHUB_OUTPUT
+
+      - name: Internalize package
+        shell: pwsh
+        run: |
+          choco download ${{ github.event.inputs.package_id }} `
+            --internalize --source="https://community.chocolatey.org/api/v2/" `
+            --internalize-all-urls `
+            --version=${{ steps.resolve_version.outputs.version }} `
+            --outputdirectory=.\packages\
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Scan binaries
