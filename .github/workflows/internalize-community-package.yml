@@ -1,6 +1,8 @@
 name: Internalize Community Package
 # See docs/architecture.md section 9.1 for the full workflow design.
-# This is a Phase 1 skeleton — fill in scan/promote scripts before relying on it.
+# scan-package.ps1 is implemented (Windows Defender + Grype); the push step
+# below targets a Nexus OSS nuget-format hosted repo (STAGING_FEED_URL, e.g.
+# https://nexus.corp.local/repository/choco-staging/).
 
 on:
   workflow_dispatch:
