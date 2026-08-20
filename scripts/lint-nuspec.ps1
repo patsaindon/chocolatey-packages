@@ -5,10 +5,101 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'lib\SimpleYaml.ps1')
 
-# TODO (docs/architecture.md section 9.3): validate the .nuspec under
-# $PackageDir — required metadata fields present, version format valid,
-# id matches folder name, etc. Fail the step on any violation.
+# Validates an internal package folder before `choco pack` runs — see
+# docs/architecture.md section 9.3. Checks structure, required nuspec
+# metadata, and that template placeholders were actually filled in.
+# Collects every violation and reports them together rather than failing
+# on the first one, so a packager isn't stuck fixing issues one at a time.
 
-Write-Host "TODO: lint-nuspec.ps1 not yet implemented. PackageDir=$PackageDir"
-exit 1
+if (-not (Test-Path $PackageDir)) {
+    throw "PackageDir '$PackageDir' does not exist."
+}
+$PackageDir = (Resolve-Path $PackageDir).Path
+$folderName = (Split-Path -Leaf $PackageDir.TrimEnd('\', '/'))
+
+$violations = [System.Collections.Generic.List[string]]::new()
+
+function Test-NotTemplatePlaceholder {
+    param([string]$Value, [string]$FieldDescription)
+    if ($null -eq $Value -or $Value -match 'CHANGE_ME') {
+        $violations.Add("$FieldDescription is still the template placeholder ('$Value') — fill it in.")
+        return $false
+    }
+    return $true
+}
+
+# --- nuspec presence & well-formedness --------------------------------
+$nuspecFiles = @(Get-ChildItem -Path $PackageDir -Filter '*.nuspec' -File)
+if ($nuspecFiles.Count -eq 0) {
+    $violations.Add("No .nuspec file found directly under $PackageDir.")
+} elseif ($nuspecFiles.Count -gt 1) {
+    $violations.Add("Expected exactly one .nuspec file under $PackageDir, found $($nuspecFiles.Count): $($nuspecFiles.Name -join ', ').")
+} else {
+    $nuspecFile = $nuspecFiles[0]
+    try {
+        [xml]$nuspec = Get-Content $nuspecFile.FullName -Raw
+    } catch {
+        $violations.Add("$($nuspecFile.Name) is not well-formed XML: $($_.Exception.Message)")
+        $nuspec = $null
+    }
+
+    if ($nuspec) {
+        $metadata = $nuspec.package.metadata
+        if (-not $metadata) {
+            $violations.Add("$($nuspecFile.Name) has no <metadata> element under <package>.")
+        } else {
+            foreach ($field in 'id', 'version', 'title', 'authors', 'owners', 'description') {
+                $val = $metadata.$field
+                if ([string]::IsNullOrWhiteSpace($val)) {
+                    $violations.Add("<$field> is missing or empty in $($nuspecFile.Name).")
+                } else {
+                    Test-NotTemplatePlaceholder -Value $val -FieldDescription "<$field> in $($nuspecFile.Name)" | Out-Null
+                }
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($metadata.id) -and $metadata.id -ne $folderName) {
+                $violations.Add("<id>$($metadata.id)</id> does not match folder name '$folderName'.")
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($metadata.version) -and
+                $metadata.version -notmatch '^\d+(\.\d+){1,3}(-[0-9A-Za-z.\-]+)?$') {
+                $violations.Add("<version>$($metadata.version)</version> is not a valid NuGet/Chocolatey version string.")
+            }
+        }
+    }
+}
+
+# --- metadata.yml -------------------------------------------------------
+$metadataYmlPath = Join-Path $PackageDir 'metadata.yml'
+if (-not (Test-Path $metadataYmlPath)) {
+    $violations.Add("metadata.yml is missing (needed for owner/lifecycle tags — see docs/architecture.md section 6.1).")
+} else {
+    $meta = Get-Content $metadataYmlPath | ConvertFrom-SimpleYaml
+    if ([string]::IsNullOrWhiteSpace($meta.owner)) {
+        $violations.Add("metadata.yml has no 'owner' field set.")
+    } else {
+        Test-NotTemplatePlaceholder -Value $meta.owner -FieldDescription "'owner' in metadata.yml" | Out-Null
+    }
+    if (-not [string]::IsNullOrWhiteSpace($meta.packageId) -and $meta.packageId -ne $folderName) {
+        $violations.Add("metadata.yml packageId '$($meta.packageId)' does not match folder name '$folderName'.")
+    }
+}
+
+# --- install script -------------------------------------------------------
+$installScript = Join-Path $PackageDir 'tools\chocolateyinstall.ps1'
+if (-not (Test-Path $installScript)) {
+    $violations.Add("tools\chocolateyinstall.ps1 is missing.")
+} elseif ((Get-Content $installScript -Raw) -match 'TODO: replace with the real install logic') {
+    $violations.Add("tools\chocolateyinstall.ps1 still contains the template TODO — install logic was never filled in.")
+}
+
+if ($violations.Count -gt 0) {
+    Write-Host "lint-nuspec.ps1 found $($violations.Count) issue(s) in $PackageDir :"
+    foreach ($v in $violations) { Write-Host "  - $v" }
+    exit 1
+}
+
+Write-Host "lint-nuspec.ps1: $folderName passed."
+exit 0

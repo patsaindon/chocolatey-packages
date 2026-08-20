@@ -8,14 +8,20 @@ on:
     - cron: "0 6 * * 1"   # weekly, Monday 06:00
   workflow_dispatch: {}
 
+permissions:
+  contents: write        # open-version-bump-prs.ps1 pushes bump branches
+  pull-requests: write    # ...and opens PRs for them
+
 jobs:
   check-updates:
     runs-on: [self-hosted, windows]
     steps:
       - uses: actions/checkout@v4
+
       - name: Compare pinned vs. upstream versions
         shell: pwsh
         run: ./scripts/check-upstream-versions.ps1 -ManifestDir .\internalized\
+
       - name: Open PRs for outdated packages
         shell: pwsh
         env:
