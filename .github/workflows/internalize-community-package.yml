@@ -60,6 +60,7 @@ jobs:
           choco download ${{ github.event.inputs.package_id }} `
             --internalize --source="https://community.chocolatey.org/api/v2/" `
             --internalize-all-urls `
+            --no-progress `
             --version=${{ steps.resolve_version.outputs.version }} `
             --outputdirectory=.\packages\
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
