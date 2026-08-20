@@ -35,30 +35,24 @@ function Get-NormalizedVersion {
 function Get-LatestCommunityVersion {
     param([string]$PackageId, [string]$Source)
 
-    $uri = "$($Source.TrimEnd('/'))/FindPackagesById()?id='$PackageId'&`$orderby=Version%20desc&`$top=1"
-    # Invoke-RestMethod already parses an application/atom+xml response into
-    # an XML object — casting it again with [xml] fails, since what comes
-    # back isn't always an XmlDocument (sometimes just the root element).
-    $response = Invoke-RestMethod -Uri $uri -Method Get
+    # Delegate to `choco search` itself instead of hand-parsing the OData v2
+    # XML response: choco already knows how to talk to the Community
+    # Repository correctly, which its own client-side parsing hides from us.
+    # (An earlier hand-rolled Invoke-RestMethod version of this function hit
+    # two real bugs from the API's response shape — see git history — before
+    # being replaced with this approach.)
+    $output = choco search $PackageId --exact --source="$Source" --limit-output
+    if ($LASTEXITCODE -ne 0 -or -not $output) {
+        throw "choco search found no match for '$PackageId' in the Community Repository at $Source."
+    }
 
-    # With $top=1 the OData endpoint returns a single Atom <entry> as the
-    # document root; with more than one match it wraps them in <feed>. Handle
-    # both shapes rather than assuming one.
-    if ($response.properties) {
-        $entry = $response
-    } else {
-        $entry = $response.feed.entry
+    # --limit-output prints one 'id|version' line per match.
+    $line = @($output)[0]
+    $parts = $line -split '\|'
+    if ($parts.Count -lt 2) {
+        throw "Unexpected 'choco search' output for '$PackageId': $line"
     }
-    if (-not $entry) {
-        throw "No package '$PackageId' found in Community Repository at $Source."
-    }
-    if ($entry -is [array]) { $entry = $entry[0] }
-
-    $versionNode = $entry.properties.Version
-    if (-not $versionNode) {
-        throw "Community Repository response for '$PackageId' had no Version property."
-    }
-    return [string]$versionNode
+    return $parts[-1].Trim()
 }
 
 if (-not (Test-Path $ManifestDir)) {
