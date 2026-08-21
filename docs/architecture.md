@@ -162,6 +162,14 @@ That same round of testing also caught a more fundamental bug in `scaffold_inter
 
 `.github/workflows/handle-package-request.yml` runs the agent (Claude Code, headless: `claude -p ... --mcp-config mcp-server/mcp-config.json --strict-mcp-config --allowedTools <exactly these 11 tools> --permission-mode bypassPermissions --output-format json`) against the issue body, and posts the agent's one-line result back as an issue comment. Two things worth calling out about how untrusted content is handled here: the issue body (and later, the agent's own response) are passed into the workflow via `env:` variables and referenced from the PowerShell script, never spliced directly into the `run:` block's script text — doing the latter is a real script-injection vector in GitHub Actions, since `${{ }}` expressions are substituted as literal text into the script *before* the shell parses it. `--strict-mcp-config` plus the explicit `--allowedTools` list also means the agent has no access to any tool beyond these eleven, regardless of what else might be configured on the runner.
 
+### 6.9 Prospecting — Proactive Version Discovery
+
+Everything above is reactive: it either refreshes a package already onboarded, or acts on a specific human request. `scripts/Update-CommunityVersionReference.ps1` (`.github/workflows/prospect-community-versions.yml`, daily schedule + `workflow_dispatch`) is the one proactive piece — it builds and maintains `prospecting/community-version-reference.csv`, a standing reference comparing, for a batch of apps drawn from evergreen-api's `/apps` index (~565 known desktop apps), that app's real current version (from evergreen-api directly) against a matching Community Repository package's version and `Published` date (`choco info`). A `VersionMismatch` or a large `StaleDays` is exactly the situation that already motivated every internal package built so far — a Community equivalent lagging the vendor's own release cadence (Section 6.1) — surfaced automatically instead of needing a human to notice it by hand.
+
+Each run only advances through a batch (`-BatchSize`, default 30) rather than checking all ~565 apps at once — never-checked apps first, then whichever checked apps have gone longest since their last check — so repeated runs cycle through the whole index over time (roughly three weeks at the default batch size and daily schedule) without hammering evergreen-api or the Community Repository for information that rarely changes minute to minute. Matching an evergreen app to a Community package id is a heuristic, not a lookup, and is treated accordingly: only an **exact** `choco search` match against a handful of candidate terms derived from the app's name is trusted, never the first result of a broader search — confirmed by testing that a plain substring search for "Firefox" surfaces dozens of loosely related packages (`adblockplusfirefox`, `allbrowsers`, …) before the real `firefox` package. An app with no confident match is reported separately, not as an error — it just means there's nothing on Community to compare against, which is itself useful (`scaffold_internal_package` would be the only path for that software). A first real test batch (8 apps) found two genuine candidates on the first try: a Community package four years stale against its real current version, and another with a version number bearing no resemblance to the vendor's actual release numbering at all.
+
+This never writes to `internal/`, staging, or production — only to its own CSV. A human (or, if this ever gets wired into that flow, the package-request agent) still decides what to do with a flagged candidate, same as every other proactive-vs-reactive boundary in this design.
+
 ## 7. Package Lifecycle & State Machine
 
 ```mermaid
@@ -190,7 +198,8 @@ Compared to the original design, `Staged --> Flagged : scan re-run finds new CVE
 | `internal/<package-id>/` | AU-based internal packages (Section 6.1) |
 | `internal/_template/` | Copy this to onboard a new internal package by hand; `scaffold_internal_package` does the same programmatically |
 | `internalized/` | No manifest — README only; presence in the staging feed is the record |
-| `scripts/` | Operational scripts with required parameters: `lint-nuspec.ps1`, `scan-package.ps1`, `Get-UpdatedPackage.ps1`, `Get-PromotionCandidates.ps1`, `Promote-Package.ps1`, `Internalize-InternalPackages.ps1`, `ConvertTo-ChocoObject.ps1` |
+| `scripts/` | Operational scripts with required parameters: `lint-nuspec.ps1`, `scan-package.ps1`, `Get-UpdatedPackage.ps1`, `Get-PromotionCandidates.ps1`, `Promote-Package.ps1`, `Internalize-InternalPackages.ps1`, `Update-CommunityVersionReference.ps1`, `ConvertTo-ChocoObject.ps1` |
+| `prospecting/` | `community-version-reference.csv` — proactive version/staleness discovery, no manifest either (Section 6.9) |
 | `scripts/au-helpers/` | Pure AU-authoring helper functions (e.g. `Set-DescriptionFromReadme.ps1`), swept in bulk by `all.ps1` — kept separate from `scripts/` because that sweep would break against scripts with required parameters |
 | `scripts/lib/` | `SimpleYaml.ps1` — a minimal, dependency-free reader for `metadata.yml`'s flat structure |
 | `mcp-server/` | The MCP server (Section 6.8) |
@@ -280,6 +289,7 @@ These are real, implemented files now — not illustrative skeletons — so this
 | `.github/workflows/propose-package-promotion.yml` | daily schedule, `workflow_dispatch` | Diff staging vs. production (read-only), propose a PR against `promotions/pending.yml` (Section 9.4) |
 | `.github/workflows/promote-approved-packages.yml` | `push` to `main` touching `promotions/pending.yml`, `workflow_dispatch` | Re-scan and promote each entry approved by merging that PR (Section 9.4) |
 | `.github/workflows/handle-package-request.yml` | Issue opened with `package-request` label | Runs the MCP-backed agent to bootstrap or scaffold+PR a requested package (Section 6.8) |
+| `.github/workflows/prospect-community-versions.yml` | daily schedule, `workflow_dispatch` | Advances `prospecting/community-version-reference.csv` a batch at a time (Section 6.9) |
 
 ## 14. Implementation Status & Roadmap
 

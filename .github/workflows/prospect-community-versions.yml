@@ -1,0 +1,46 @@
+name: Prospect Community Package Versions
+# Proactive discovery, not a reaction to a request or an already-onboarded
+# package — see prospecting/README.md and docs/architecture.md section
+# 6.9. Each run advances scripts/Update-CommunityVersionReference.ps1
+# through a batch of evergreen-api's ~565 known apps, comparing each
+# app's real current version against a matching Community Repository
+# package's version and Published date, and commits the updated
+# reference CSV. Never touches internal/, staging, or production — this
+# only ever reads external, public APIs and writes its own CSV.
+
+on:
+  schedule:
+    - cron: "0 5 * * *"   # daily, 05:00 — ~19 days to cycle the full index at the default batch size
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: "How many evergreen apps to check this run"
+        required: false
+        default: "30"
+
+permissions:
+  contents: write   # commits the updated reference CSV
+
+jobs:
+  prospect:
+    runs-on: [self-hosted, windows, choco-internalize]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update the community version reference
+        shell: pwsh
+        env:
+          BATCH_SIZE: ${{ github.event.inputs.batch_size || '30' }}
+        run: |
+          ./scripts/Update-CommunityVersionReference.ps1 -Verbose -BatchSize ([int]$env:BATCH_SIZE)
+
+          git diff --quiet -- prospecting/community-version-reference.csv
+          if ($LASTEXITCODE -ne 0) {
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git add prospecting/community-version-reference.csv
+            git commit -m "Update community version reference"
+            git push origin main
+          } else {
+            Write-Host "No change in the reference this run."
+          }

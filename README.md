@@ -10,6 +10,7 @@ See **[docs/architecture.md](docs/architecture.md)** for the full design, includ
 - **Internal packages** are [AU](https://github.com/majkinetor/AU) (Chocolatey Automatic Packages): each one checks its own vendor's release page directly via `update.ps1`. `update-internal-packages.yml` runs the same daily-diff model against them; `test-internal-packages.yml` validates changes on a PR without ever touching a feed.
 - **Promotion to production**: `propose-package-promotion.yml` diffs staging against production and proposes a PR listing what's newer in staging; merging that PR is the human approval, and `promote-approved-packages.yml` then re-scans and pushes each entry on to production. (An Environment with required reviewers was the original plan, but GitHub restricts that protection rule to organization-owned repos — this one's owned by a personal account, so the PR itself is the gate.)
 - **Requesting a new package** you haven't touched before: open an Issue from the `package-request` template. `handle-package-request.yml` runs an AI agent (Claude Code, headless) against a small MCP server (`mcp-server/`) exposing eleven narrowly-scoped tools — it either bootstraps a Community package straight to staging, or scaffolds a new internal AU package (informed by a small knowledge base of vendor-specific quirks it can also add to, human-reviewed via the same PR) and opens a PR for a human to review. The agent never touches production and never merges its own PR.
+- **Finding candidates before anyone asks**: `prospect-community-versions.yml` runs daily, comparing a batch of well-known apps' real current versions (from evergreen-api) against a matching Community package's version and how long ago it was published — surfacing exactly the situation that already motivates every internal package built so far (Community lagging the vendor) before a human has to notice it by hand. See [prospecting/README.md](prospecting/README.md).
 
 ```mermaid
 flowchart LR
@@ -33,6 +34,7 @@ flowchart LR
 | [.github/workflows/](.github/workflows/) | Every workflow described above |
 | [scripts/](scripts/) | Operational PowerShell: linting, scanning, the diff-based internalize/promote logic |
 | [mcp-server/](mcp-server/) | The MCP server behind the Issue-triggered creation flow ([mcp-server/README.md](mcp-server/README.md)) |
+| [prospecting/](prospecting/) | Proactive version/staleness discovery against evergreen-api ([prospecting/README.md](prospecting/README.md)) |
 | [update_all.ps1](update_all.ps1) / [test_all.ps1](test_all.ps1) | AU's repo-root drivers for `internal/` packages |
 
 ## Status
