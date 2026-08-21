@@ -10,7 +10,14 @@ name: Handle Package Request
 
 on:
   issues:
-    types: [opened]
+    # 'labeled' in addition to 'opened': the Issue Form applies the
+    # package-request label as part of the same submission when a packager
+    # uses the real GitHub UI form, so 'opened' alone is normally enough —
+    # but any path that creates the issue and labels it as a separate call
+    # (e.g. `gh issue create --label`, or a maintainer labeling a plain
+    # issue after the fact) fires 'opened' before the label is attached,
+    # so the job's label check below sees an empty label list and skips.
+    types: [opened, labeled]
 
 permissions:
   contents: write        # open_pull_request pushes a branch
