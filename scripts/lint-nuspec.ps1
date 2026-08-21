@@ -38,6 +38,16 @@ if ($nuspecFiles.Count -eq 0) {
     $violations.Add("Expected exactly one .nuspec file under $PackageDir, found $($nuspecFiles.Count): $($nuspecFiles.Name -join ', ').")
 } else {
     $nuspecFile = $nuspecFiles[0]
+
+    # AU (see internal/README.md) discovers a package by nuspec *filename*,
+    # not just the <id> element — confirmed by actually running update.ps1
+    # against a mismatched folder/filename, which failed with "No nuspec
+    # file found" until the filename matched the folder name.
+    $nuspecBaseName = [System.IO.Path]::GetFileNameWithoutExtension($nuspecFile.Name)
+    if ($nuspecBaseName -ne $folderName) {
+        $violations.Add("$($nuspecFile.Name) filename does not match folder name '$folderName' — AU won't discover this package until they match.")
+    }
+
     try {
         [xml]$nuspec = Get-Content $nuspecFile.FullName -Raw
     } catch {
@@ -88,11 +98,22 @@ if (-not (Test-Path $metadataYmlPath)) {
 }
 
 # --- install script -------------------------------------------------------
+# Note: url/checksum are *expected* to be empty in tools\chocolateyinstall.ps1
+# as committed — update.ps1's au_SearchReplace fills them in at update time.
+# That's not something to lint for; CHANGE_ME below is.
 $installScript = Join-Path $PackageDir 'tools\chocolateyinstall.ps1'
 if (-not (Test-Path $installScript)) {
     $violations.Add("tools\chocolateyinstall.ps1 is missing.")
-} elseif ((Get-Content $installScript -Raw) -match 'TODO: replace with the real install logic') {
-    $violations.Add("tools\chocolateyinstall.ps1 still contains the template TODO — install logic was never filled in.")
+} elseif ((Get-Content $installScript -Raw) -match 'CHANGE_ME') {
+    $violations.Add("tools\chocolateyinstall.ps1 still contains the template placeholder ('CHANGE_ME') — packageName/softwareName were never filled in.")
+}
+
+# --- AU update script -----------------------------------------------------
+$updateScript = Join-Path $PackageDir 'update.ps1'
+if (-not (Test-Path $updateScript)) {
+    $violations.Add("update.ps1 is missing (required for AU-based updates — see internal/README.md).")
+} elseif ((Get-Content $updateScript -Raw) -match 'CHANGE_ME') {
+    $violations.Add("update.ps1 still contains the template placeholder ('CHANGE_ME') — au_GetLatest was never pointed at a real release source.")
 }
 
 if ($violations.Count -gt 0) {

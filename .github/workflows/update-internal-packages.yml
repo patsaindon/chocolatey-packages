@@ -1,0 +1,47 @@
+name: Update Internal Packages
+# AU-based update of every internal/<id>/ package — see internal/README.md
+# and docs/architecture.md section 9.3. Same "diff and push straight to
+# staging" model as refresh-internalized-packages.yml: each package's
+# update.ps1/au_GetLatest checks its own release source, and update_all.ps1
+# (AU's updateall) packs and pushes anything newer. Promotion to production
+# still goes through the separate, environment-gated promote-package.yml.
+
+on:
+  schedule:
+    - cron: "30 6 * * *"   # daily, 06:30 — after refresh-internalized-packages.yml
+  workflow_dispatch: {}
+
+jobs:
+  update:
+    runs-on: [self-hosted, windows]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint every internal package
+        shell: pwsh
+        run: |
+          $failed = $false
+          Get-ChildItem .\internal\ -Directory | Where-Object { $_.Name -notlike '_*' } | ForEach-Object {
+            ./scripts/lint-nuspec.ps1 -PackageDir $_.FullName
+            if ($LASTEXITCODE -ne 0) { $failed = $true }
+          }
+          if ($failed) { exit 1 }
+
+      - name: Point choco's default push target at the staging feed
+        shell: pwsh
+        env:
+          STAGING_FEED_URL: ${{ secrets.STAGING_FEED_URL }}
+          STAGING_API_KEY: ${{ secrets.STAGING_API_KEY }}
+        run: |
+          # update_all.ps1 (AU) pushes via plain `choco push`, which uses
+          # this configured default source/key rather than an explicit
+          # --source flag — verified against `choco config --help` /
+          # `choco apikey --help` rather than assumed.
+          choco config set --name defaultPushSource --value "$env:STAGING_FEED_URL"
+          choco apikey add --source="$env:STAGING_FEED_URL" --api-key="$env:STAGING_API_KEY"
+
+      - name: Update internal packages (AU)
+        shell: pwsh
+        env:
+          au_Push: 'true'
+        run: ./update_all.ps1 -Root .\internal\

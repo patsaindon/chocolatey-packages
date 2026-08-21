@@ -1,0 +1,37 @@
+name: Test Internal Packages
+# Validates internal/<id>/ packages on PRs touching them, before
+# update-internal-packages.yml ever runs against them for real. Uses AU's
+# test_all.ps1 (Force=true, Push=false — never touches any feed) to force
+# an update check + pack for every changed package. See internal/README.md.
+
+on:
+  pull_request:
+    paths:
+      - "internal/**"
+
+jobs:
+  test:
+    runs-on: [self-hosted, windows]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need origin/<base_ref> available for the diff below
+
+      - name: Lint changed internal packages
+        shell: pwsh
+        run: |
+          $failed = $false
+          $changed = git diff --name-only origin/${{ github.base_ref }}...HEAD -- internal/ |
+            ForEach-Object { ($_ -split '/')[1] } | Where-Object { $_ -and $_ -notlike '_*' } | Sort-Object -Unique
+          foreach ($id in $changed) {
+            $dir = Join-Path .\internal $id
+            if (Test-Path $dir) {
+              ./scripts/lint-nuspec.ps1 -PackageDir $dir
+              if ($LASTEXITCODE -ne 0) { $failed = $true }
+            }
+          }
+          if ($failed) { exit 1 }
+
+      - name: Force-test internal packages (AU, no push)
+        shell: pwsh
+        run: ./test_all.ps1 -Root .\internal\
