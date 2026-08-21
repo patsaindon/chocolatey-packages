@@ -34,4 +34,12 @@ jobs:
 
       - name: Force-test internal packages (AU, no push)
         shell: pwsh
-        run: ./test_all.ps1 -Root .\internal\
+        run: |
+          # test_all.ps1 only throws (failing this step) when the caller's
+          # own $ThrowOnErrors is truthy — it defaults to unset/false, so a
+          # real AU update error would otherwise leave this step green.
+          # Found by testing: AU genuinely errored on a package here and
+          # the step still passed.
+          $ThrowOnErrors = $true
+          ./test_all.ps1 -Root .\internal\
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

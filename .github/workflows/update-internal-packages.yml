@@ -44,4 +44,16 @@ jobs:
         shell: pwsh
         env:
           au_Push: 'true'
-        run: ./update_all.ps1 -Root .\internal\
+        run: |
+          # update_all.ps1's own throw-on-error line is commented out by
+          # default (same class of gap as test_all.ps1's $ThrowOnErrors —
+          # found by testing, see docs/architecture.md section 14), so a
+          # real AU update error wouldn't otherwise fail this step. Same
+          # $global:info shape test_all.ps1 uses successfully.
+          ./update_all.ps1 -Root .\internal\
+          $auErrors = $global:info | Where-Object { $_.Error } | Select-Object -ExpandProperty Error
+          if ($auErrors.Count -gt 0) {
+            Write-Warning "AU reported $($auErrors.Count) error(s):"
+            $auErrors | ForEach-Object { Write-Warning "  - $_" }
+            exit 1
+          }
