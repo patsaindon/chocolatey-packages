@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>temurin17</id>
+    <version>0.0.0</version>
+    <title>temurin17</title>
+    <authors>platform-engineering</authors>
+    <owners>platform-engineering</owners>
+    <projectUrl>https://github.com/adoptium/temurin17-binaries/releases/latest</projectUrl>
+    <description>Real use case: the Community Repository's temurin17 package (currently 17.0.17.10) can lag behind Eclipse Adoptium's actual releases. Tracking the real upstream release page directly via AU instead of mirroring the Community package. Supersedes issue #2.</description>
+    <tags>internal</tags>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
