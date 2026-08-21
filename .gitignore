@@ -9,3 +9,8 @@ update_vars.ps1
 # mcp-server/package-lock.json IS committed (npm ci needs it in CI).
 mcp-server/node_modules/
 mcp-server/agent_output.json
+
+# Draft-CommunityPackageUpdate.ps1's output — a third-party maintainer's
+# own files plus a proposed edit, staged locally for a human to review
+# and submit as a PR on *their* repo. Never belongs in this one.
+prospecting/drafts/

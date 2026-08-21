@@ -70,3 +70,24 @@ batch's console summary:
 Import-Csv prospecting/community-version-reference.csv |
     Where-Object { $_.VersionMismatch -eq 'True' -or [int]$_.StaleDays -gt 180 }
 ```
+
+## Drafting an update for a stale package's own maintainer
+
+`scripts/Draft-CommunityPackageUpdate.ps1 -CommunityPackageId <id>` fetches
+that package's real files (nuspec, `tools/chocolateyInstall.ps1`) straight
+from its own `Chocolatey Package Source` repo (a field `choco info`
+already reports), plus the real current version/URL/checksum from
+evergreen-api, and writes `prospecting/drafts/<id>/` with the originals
+under `original/` and an `UPDATE-NOTES.md` summarizing what to change and
+where to submit it.
+
+**It never auto-edits the maintainer's script or opens a PR.** Unlike
+this repo's own AU templates, an arbitrary Community package's script
+structure is unknown — a wrong auto-edit wastes the maintainer's review
+time worse than no PR at all — and submitting to someone else's repo is
+an outward-facing action representing you to a stranger, not something
+to automate away entirely. A human forks, makes the actual edit (informed
+by real, correct data this script already looked up), tests it locally,
+and opens the PR themselves. `prospecting/drafts/` is gitignored — it's
+someone else's files plus a proposed edit, staged for review, never
+something that belongs committed to this repo.

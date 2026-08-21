@@ -170,6 +170,10 @@ Each run only advances through a batch (`-BatchSize`, default 30) rather than ch
 
 This never writes to `internal/`, staging, or production — only to its own CSV. A human (or, if this ever gets wired into that flow, the package-request agent) still decides what to do with a flagged candidate, same as every other proactive-vs-reactive boundary in this design.
 
+A flagged candidate has two possible next steps: make it an internal AU package (Section 6.2/6.8, using the row's `EvergreenName` directly as `scaffold_internal_package`'s `evergreen_app_name`), or contribute the fix back to the Community package's own maintainer. `scripts/Draft-CommunityPackageUpdate.ps1 -CommunityPackageId <id>` supports the second path: it fetches that package's real files (nuspec, `tools/chocolateyInstall.ps1`) from its own `Chocolatey Package Source` repo (a field `choco info` already reports — parsed as a `github.com/<owner>/<repo>/tree/<branch>/<path>` URL, then read via GitHub's Contents API rather than a full clone, confirmed against a real package), plus the real current version/URL/checksum from evergreen-api, into `prospecting/drafts/<id>/` alongside an `UPDATE-NOTES.md` summarizing what to change and where to submit it.
+
+This deliberately stops at drafting — it never auto-edits the maintainer's script or opens a PR. That's a different kind of action than everything else in this design: every other write happens against this repo's own feeds or its own GitHub repo; submitting to a stranger's repo is outward-facing, harder to walk back, and depends on a correctness guarantee this tooling can't make for a script structure it's never seen (unlike this repo's own AU templates, whose structure is fully known). A wrong auto-edit costs the maintainer real review time; a batch of unsolicited automated PRs across many different maintainers' repos is also the kind of thing open-source maintainers generally treat as spam, not a contribution — worth avoiding on its own terms, not only for the correctness reason. A human forks, edits (informed by real data this script already looked up, not their own research), tests locally, and submits the PR themselves.
+
 ## 7. Package Lifecycle & State Machine
 
 ```mermaid
@@ -198,7 +202,7 @@ Compared to the original design, `Staged --> Flagged : scan re-run finds new CVE
 | `internal/<package-id>/` | AU-based internal packages (Section 6.1) |
 | `internal/_template/` | Copy this to onboard a new internal package by hand; `scaffold_internal_package` does the same programmatically |
 | `internalized/` | No manifest — README only; presence in the staging feed is the record |
-| `scripts/` | Operational scripts with required parameters: `lint-nuspec.ps1`, `scan-package.ps1`, `Get-UpdatedPackage.ps1`, `Get-PromotionCandidates.ps1`, `Promote-Package.ps1`, `Internalize-InternalPackages.ps1`, `Update-CommunityVersionReference.ps1`, `ConvertTo-ChocoObject.ps1` |
+| `scripts/` | Operational scripts with required parameters: `lint-nuspec.ps1`, `scan-package.ps1`, `Get-UpdatedPackage.ps1`, `Get-PromotionCandidates.ps1`, `Promote-Package.ps1`, `Internalize-InternalPackages.ps1`, `Update-CommunityVersionReference.ps1`, `Draft-CommunityPackageUpdate.ps1`, `ConvertTo-ChocoObject.ps1` |
 | `prospecting/` | `community-version-reference.csv` — proactive version/staleness discovery, no manifest either (Section 6.9) |
 | `scripts/au-helpers/` | Pure AU-authoring helper functions (e.g. `Set-DescriptionFromReadme.ps1`), swept in bulk by `all.ps1` — kept separate from `scripts/` because that sweep would break against scripts with required parameters |
 | `scripts/lib/` | `SimpleYaml.ps1` — a minimal, dependency-free reader for `metadata.yml`'s flat structure |
