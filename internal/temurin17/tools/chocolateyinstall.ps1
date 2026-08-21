@@ -6,13 +6,13 @@ $toolsPath = Split-Path $MyInvocation.MyCommand.Definition
 # file with empty url/checksum is the normal, expected state for an AU
 # package — do not fill them in by hand.
 $packageArgs = @{
-  packageName    = 'CHANGE_ME'
-  fileType       = 'exe'                # adjust: exe / msi / msu
-  url            = ''
-  softwareName   = 'CHANGE_ME*'         # part of/whole software name, for uninstall registry lookup
+  packageName    = 'temurin17'
+  fileType       = 'msi'                # adjust: exe / msi / msu
+  file           = ''
+  softwareName   = 'temurin17*'         # part of/whole software name, for uninstall registry lookup
   checksum       = ''
   checksumType   = 'sha256'
-  silentArgs     = '/S'                 # adjust for this installer's actual silent-install flag
+  silentArgs     = '/qn /norestart'                 # adjust for this installer's actual silent-install flag
   validExitCodes = @(0)
 }
 

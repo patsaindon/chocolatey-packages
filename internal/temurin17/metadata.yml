@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: temurin17
+owner: platform-engineering                  # owning team, drives notification routing
+notes: "Real use case: the Community Repository's temurin17 package (currently 17.0.17.10) can lag behind Eclipse Adoptium's actual releases. Tracking the real upstream release page directly via AU instead of mirroring the Community package. Supersedes issue #2."

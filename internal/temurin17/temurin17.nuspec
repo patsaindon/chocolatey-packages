@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>temurin17</id>
+    <version>17.0.20.8</version>
+    <title>Eclipse Temurin 17 (JDK)</title>
+    <authors>Eclipse Adoptium</authors>
+    <owners>platform-engineering</owners>
+    <projectUrl>https://adoptium.net/temurin/releases/?version=17</projectUrl>
+    <description>Eclipse Temurin 17 is a production-ready, TCK-certified OpenJDK 17 LTS distribution provided by the Eclipse Adoptium project. This internal package tracks upstream releases directly via AU and installs the x64 Windows JDK MSI.</description>
+    <tags>java jdk adoptium temurin lts internal</tags>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
