@@ -179,7 +179,7 @@ Compared to the original design, `Staged --> Flagged : scan re-run finds new CVE
 | `internal/<package-id>/` | AU-based internal packages (Section 6.1) |
 | `internal/_template/` | Copy this to onboard a new internal package by hand; `scaffold_internal_package` does the same programmatically |
 | `internalized/` | No manifest — README only; presence in the staging feed is the record |
-| `scripts/` | Operational scripts with required parameters: `lint-nuspec.ps1`, `scan-package.ps1`, `Get-UpdatedPackage.ps1`, `Update-ProdRepoFromTest.ps1`, `ConvertTo-ChocoObject.ps1` |
+| `scripts/` | Operational scripts with required parameters: `lint-nuspec.ps1`, `scan-package.ps1`, `Get-UpdatedPackage.ps1`, `Update-ProdRepoFromTest.ps1`, `Internalize-InternalPackages.ps1`, `ConvertTo-ChocoObject.ps1` |
 | `scripts/au-helpers/` | Pure AU-authoring helper functions (e.g. `Set-DescriptionFromReadme.ps1`), swept in bulk by `all.ps1` — kept separate from `scripts/` because that sweep would break against scripts with required parameters |
 | `scripts/lib/` | `SimpleYaml.ps1` — a minimal, dependency-free reader for `metadata.yml`'s flat structure |
 | `mcp-server/` | The MCP server (Section 6.8) |
@@ -205,8 +205,12 @@ Either way, this is a one-time step — `refresh-internalized-packages.yml` (bel
 
 ### 9.3 Internal (AU) Packages
 
-- **On a PR** touching `internal/**`: `.github/workflows/test-internal-packages.yml` lints the changed package(s) and force-tests them via AU's `test_all.ps1` (`Force=true`, `Push=false`) — never touches a feed.
-- **On a schedule**: `.github/workflows/update-internal-packages.yml` lints every package, points `choco`'s default push source/API key at staging (`choco config set --name defaultPushSource`, `choco apikey add`), and runs `update_all.ps1` (AU's `updateall`), which checks each package's `au_GetLatest` and pushes anything newer straight to staging.
+AU's own job is deliberately narrow: detect a new version and produce a package. Internalizing it — so nothing that reaches staging still depends on external network access, the same guarantee `internalized/` packages already have — is left entirely to `choco download --internalize`, run as a separate step against AU's own local output, not baked into the AU package definitions themselves.
+
+- **On a PR** touching `internal/**`: `.github/workflows/test-internal-packages.yml` lints the changed package(s) and force-tests them via AU's `test_all.ps1` (`Force=true`, `Push=false`) — never touches a feed, never internalizes (a PR is just validating that `au_GetLatest`/`au_SearchReplace`/pack work; nothing here is meant to reach staging).
+- **On a schedule**: `.github/workflows/update-internal-packages.yml` lints every package, then runs `update_all.ps1` (AU's `updateall`) with **push disabled** — AU packs each updated package locally (`internal/<id>/*.nupkg`) and stops there. A second step, `scripts/Internalize-InternalPackages.ps1`, then internalizes each of those local packages (`choco download --internalize --source=<local package dir>`), scans the result, and pushes only the internalized package to staging.
+
+The "thin" (vendor-URL-referencing) package AU produces never touches any shared feed — it's a transient local build artifact, cleaned up after internalizing, the same principle `internalize-community-package.yml` already uses (download → scan → push, nothing shared in between). This was a deliberate design correction: an earlier version of this pipeline had AU push the thin package to staging directly, then internalize it there and try to replace it in place. Real testing against a live BaGetter instance showed why that doesn't work — NuGet-compatible feeds (Nexus, Artifactory, BaGetter, and the protocol generally) treat a published id+version as immutable; even a successful `DELETE` (which only unlists, doesn't purge) still left a same-version re-push rejected with a 409 Conflict. AU only repacks when it finds a genuinely new version, so operating on its local output sidesteps the immutability question entirely — nothing here ever needs to overwrite an already-published version.
 
 New internal packages are created via the Issue → `scaffold_internal_package` → PR flow (Section 6.2), or by hand from `internal/_template/`.
 
@@ -252,7 +256,7 @@ These are real, implemented files now — not illustrative skeletons — so this
 | `.github/workflows/internalize-community-package.yml` | `workflow_dispatch` | One-time bootstrap of a new Community package into staging (Section 9.1) |
 | `.github/workflows/refresh-internalized-packages.yml` | daily schedule, `workflow_dispatch` | Diff staging vs. Community Repository, re-internalize what's newer (Section 9.2) |
 | `.github/workflows/test-internal-packages.yml` | PR touching `internal/**` | Lint + force-test changed AU packages, no push (Section 9.3) |
-| `.github/workflows/update-internal-packages.yml` | daily schedule, `workflow_dispatch` | Lint + `update_all.ps1` (AU) against every internal package, pushes to staging (Section 9.3) |
+| `.github/workflows/update-internal-packages.yml` | daily schedule, `workflow_dispatch` | Lint + `update_all.ps1` (AU, pack-only) + `scripts/Internalize-InternalPackages.ps1` against every internal package, pushes the internalized result to staging (Section 9.3) |
 | `.github/workflows/promote-package.yml` | daily schedule, `workflow_dispatch`, `production-feed` environment | Diff staging vs. production, re-scan, promote (Section 9.4) |
 | `.github/workflows/handle-package-request.yml` | Issue opened with `package-request` label | Runs the MCP-backed agent to bootstrap or scaffold+PR a requested package (Section 6.8) |
 
@@ -284,6 +288,8 @@ What's still only validated against BaGetter, not literal Nexus: the promotion w
 > docker run -d --name choco-test-prod    -p 5556:8080 -e ApiKey=test-key-prod bagetter/bagetter:latest
 > ```
 > Source URL for both `choco` and this repo's scripts: `http://localhost:5555/v3/index.json` (BaGetter is a v3-only feed; push still goes through the standard `/api/v2/package` endpoint that choco already expects). `docker rm -f choco-test-staging choco-test-prod` tears it down — nothing persists outside the containers.
+
+`scripts/Internalize-InternalPackages.ps1` (Section 9.3) was validated the same way: a throwaway package with a real external URL (7-Zip's own installer) was packed locally, run through the script against the real BaGetter staging container, and confirmed to internalize, scan, and push cleanly — with the local thin `.nupkg` actually deleted afterward, and nothing left for git to accidentally pick up. The DELETE-then-replace approach it deliberately does *not* use was tried first and confirmed broken this same way: a real `DELETE` against BaGetter returned 204, and the subsequent re-push of the same id+version was still rejected with a 409 Conflict — confirming NuGet's immutable-version behavior empirically rather than assuming it.
 
 **Still open, roughly in order of what would unblock real use:**
 

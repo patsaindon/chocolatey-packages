@@ -1,10 +1,12 @@
 name: Update Internal Packages
 # AU-based update of every internal/<id>/ package — see internal/README.md
-# and docs/architecture.md section 9.3. Same "diff and push straight to
-# staging" model as refresh-internalized-packages.yml: each package's
-# update.ps1/au_GetLatest checks its own release source, and update_all.ps1
-# (AU's updateall) packs and pushes anything newer. Promotion to production
-# still goes through the separate, environment-gated promote-package.yml.
+# and docs/architecture.md section 9.3. AU's own job is only to detect a
+# new version and produce a package locally (Push disabled) — internalizing
+# it (so nothing that reaches staging still depends on external network
+# access) is left entirely to choco's own --internalize, run as a separate
+# step against that local package, per the user's explicit direction.
+# Promotion to production still goes through the separate,
+# environment-gated promote-package.yml.
 
 on:
   schedule:
@@ -13,7 +15,7 @@ on:
 
 jobs:
   update:
-    runs-on: [self-hosted, windows]
+    runs-on: [self-hosted, windows, choco-internalize]
     steps:
       - uses: actions/checkout@v4
 
@@ -27,29 +29,18 @@ jobs:
           }
           if ($failed) { exit 1 }
 
-      - name: Point choco's default push target at the staging feed
+      - name: Update internal packages (AU, pack only — no push)
         shell: pwsh
-        env:
-          STAGING_FEED_URL: ${{ secrets.STAGING_FEED_URL }}
-          STAGING_API_KEY: ${{ secrets.STAGING_API_KEY }}
         run: |
-          # update_all.ps1 (AU) pushes via plain `choco push`, which uses
-          # this configured default source/key rather than an explicit
-          # --source flag — verified against `choco config --help` /
-          # `choco apikey --help` rather than assumed.
-          choco config set --name defaultPushSource --value "$env:STAGING_FEED_URL"
-          choco apikey add --source="$env:STAGING_FEED_URL" --api-key="$env:STAGING_API_KEY"
-
-      - name: Update internal packages (AU)
-        shell: pwsh
-        env:
-          au_Push: 'true'
-        run: |
+          # au_Push is intentionally NOT set to 'true' here — AU packs
+          # locally (into internal/<id>/*.nupkg) but never pushes anywhere.
+          # The next step internalizes that local package before anything
+          # reaches a shared feed.
+          #
           # update_all.ps1's own throw-on-error line is commented out by
           # default (same class of gap as test_all.ps1's $ThrowOnErrors —
           # found by testing, see docs/architecture.md section 14), so a
-          # real AU update error wouldn't otherwise fail this step. Same
-          # $global:info shape test_all.ps1 uses successfully.
+          # real AU update error wouldn't otherwise fail this step.
           ./update_all.ps1 -Root .\internal\
           $auErrors = $global:info | Where-Object { $_.Error } | Select-Object -ExpandProperty Error
           if ($auErrors.Count -gt 0) {
@@ -57,3 +48,14 @@ jobs:
             $auErrors | ForEach-Object { Write-Warning "  - $_" }
             exit 1
           }
+
+      - name: Internalize and push updated packages
+        shell: pwsh
+        env:
+          STAGING_FEED_URL: ${{ secrets.STAGING_FEED_URL }}
+          STAGING_API_KEY: ${{ secrets.STAGING_API_KEY }}
+        run: |
+          ./scripts/Internalize-InternalPackages.ps1 -Verbose `
+            -InternalDir .\internal\ `
+            -StagingRepo $env:STAGING_FEED_URL `
+            -StagingApiKey $env:STAGING_API_KEY
