@@ -1,0 +1,72 @@
+name: Promote Approved Packages
+# Fires when a human merges the PR propose-package-promotion.yml opens
+# against promotions/pending.yml -- that merge is the approval. Actually
+# pushes each queued package/version from staging to production, then
+# commits the reduced queue back to main directly (bookkeeping only, no
+# PR needed -- the human already approved by merging). See
+# docs/architecture.md section 9.4.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "promotions/pending.yml"
+  workflow_dispatch: {}   # manual retry, e.g. after fixing a failed entry
+
+permissions:
+  contents: write   # commits the trimmed queue back to main
+
+jobs:
+  promote:
+    runs-on: [self-hosted, windows]
+    environment: production-feed   # secret scoping only -- required
+                                    # reviewers aren't available on this
+                                    # personal-account repo (see
+                                    # propose-package-promotion.yml); the
+                                    # PR merge upstream is the real gate.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Promote every queued package
+        shell: pwsh
+        env:
+          STAGING_FEED_URL: ${{ secrets.STAGING_FEED_URL }}
+          PRODUCTION_FEED_URL: ${{ secrets.PRODUCTION_FEED_URL }}
+          # Scoped to this workflow only -- never available to the
+          # internalize/refresh/AU-update/issue-handling workflows or to
+          # propose-package-promotion.yml (which never pushes anywhere).
+          # See docs/architecture.md section 6.6 / 12.
+          PRODUCTION_API_KEY: ${{ secrets.PRODUCTION_API_KEY }}
+        run: |
+          $allLines = Get-Content .\promotions\pending.yml
+          $header = $allLines | Where-Object { $_ -match '^\s*#' -or $_.Trim() -eq '' }
+          $entries = $allLines | Where-Object { $_.Trim() -ne '' -and $_ -notmatch '^\s*#' }
+
+          $remaining = [System.Collections.Generic.List[string]]::new()
+          $anyFailed = $false
+          foreach ($entry in $entries) {
+            $name, $version = $entry -split '\|', 2
+            ./scripts/Promote-Package.ps1 -Verbose -Name $name -Version $version `
+              -TestRepo $env:STAGING_FEED_URL -ProdRepo $env:PRODUCTION_FEED_URL `
+              -ProdRepoApiKey $env:PRODUCTION_API_KEY
+            if ($LASTEXITCODE -ne 0) {
+              Write-Warning "'$name' $version did not promote -- leaving it queued for retry."
+              $remaining.Add($entry)
+              $anyFailed = $true
+            } else {
+              Write-Host "'$name' $version promoted -- removing from the queue."
+            }
+          }
+
+          Set-Content -Path .\promotions\pending.yml -Value ($header + $remaining) -Encoding utf8NoBOM
+
+          git diff --quiet -- promotions/pending.yml
+          if ($LASTEXITCODE -ne 0) {
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git add promotions/pending.yml
+            git commit -m "Remove promoted packages from the pending queue"
+            git push origin main
+          }
+
+          if ($anyFailed) { exit 1 }

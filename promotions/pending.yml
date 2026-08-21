@@ -1,0 +1,9 @@
+# Packages queued for promotion to production. Regenerated wholesale by
+# propose-package-promotion.yml (diffing staging vs. production) and
+# trimmed by promote-approved-packages.yml as each entry actually gets
+# pushed to production. Merging a PR that touches this file IS the human
+# approval gate for production promotion -- see docs/architecture.md
+# section 9.4. One entry per line, "name|version" (same format as
+# `choco search --limit-output` / ConvertTo-ChocoObject.ps1 already use
+# elsewhere in this repo). Empty until the next propose run finds
+# something newer in staging than production.

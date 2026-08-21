@@ -1,0 +1,75 @@
+name: Propose Package Promotion
+# Replaces the old direct promote-package.yml. GitHub Environment
+# protection rules (required reviewers) turned out not to be available on
+# production-feed here at all: GitHub restricts environment protection
+# rules to organization-owned repositories, and this repo is owned by a
+# personal account -- found by testing, every PUT to the environment was
+# rejected with a 403 even after the fine-grained PAT was given
+# Environments: read-and-write. So the human gate is a PR instead: this
+# workflow only diffs staging vs. production (read-only, no production
+# credentials needed) and proposes the result as a PR touching
+# promotions/pending.yml. Merging that PR is the approval --
+# promote-approved-packages.yml does the actual promotion, triggered by
+# the merge itself. See docs/architecture.md section 9.4.
+
+on:
+  schedule:
+    - cron: "0 8 * * *"   # daily, 08:00
+  workflow_dispatch: {}
+
+permissions:
+  contents: write        # commits/pushes the promote/pending-production branch
+  pull-requests: write    # opens/updates the promotion PR
+
+jobs:
+  propose:
+    runs-on: [self-hosted, windows]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Diff staging vs. production and propose a promotion PR
+        shell: pwsh
+        env:
+          STAGING_FEED_URL: ${{ secrets.STAGING_FEED_URL }}
+          PRODUCTION_FEED_URL: ${{ secrets.PRODUCTION_FEED_URL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $candidates = @(./scripts/Get-PromotionCandidates.ps1 -Verbose `
+            -TestRepo $env:STAGING_FEED_URL -ProdRepo $env:PRODUCTION_FEED_URL)
+
+          $lines = @(
+            '# Packages queued for promotion to production. Regenerated wholesale by'
+            '# propose-package-promotion.yml (diffing staging vs. production) and'
+            '# trimmed by promote-approved-packages.yml as each entry actually gets'
+            '# pushed to production. Merging a PR that touches this file IS the human'
+            '# approval gate for production promotion -- see docs/architecture.md'
+            '# section 9.4. One entry per line, "name|version" (same format as'
+            '# `choco search --limit-output` / ConvertTo-ChocoObject.ps1 already use'
+            '# elsewhere in this repo).'
+          )
+          $lines += $candidates | ForEach-Object { "$($_.name)|$($_.version)" }
+          Set-Content -Path .\promotions\pending.yml -Value $lines -Encoding utf8NoBOM
+
+          git diff --quiet -- promotions/pending.yml
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "No change in promotion candidates -- nothing to propose."
+            exit 0
+          }
+
+          $branch = 'promote/pending-production'
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git checkout -B $branch
+          git add promotions/pending.yml
+          git commit -m "Update pending production promotions ($($candidates.Count) package(s))"
+          git push origin $branch --force-with-lease
+
+          $existingPr = gh pr list --head $branch --state open --json url --jq '.[0].url'
+          if (-not $existingPr) {
+            gh pr create --base main --head $branch `
+              --title "Promote to production: $($candidates.Count) package(s)" `
+              --body "Diffed staging vs. production. Merging this PR is the approval to push these package/version pairs to production -- see promotions/pending.yml and docs/architecture.md section 9.4."
+          } else {
+            Write-Host "Updated existing PR: $existingPr"
+          }
+          git checkout main
