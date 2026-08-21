@@ -42,7 +42,15 @@ jobs:
         id: agent
         shell: pwsh
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`, run once
+          # interactively) authenticates against a Claude Pro/Max
+          # subscription's included usage rather than pay-per-token API
+          # billing — avoids needing a separately funded ANTHROPIC_API_KEY.
+          # Confirmed via Claude Code's own docs, not assumed. Trade-off:
+          # this ties CI usage to whoever ran setup-token; an org deploying
+          # this more broadly may prefer a shared ANTHROPIC_API_KEY instead
+          # (also still accepted by `claude` if set in its place).
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           STAGING_FEED_URL: ${{ secrets.STAGING_FEED_URL }}
           STAGING_API_KEY: ${{ secrets.STAGING_API_KEY }}
