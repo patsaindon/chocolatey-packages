@@ -1,6 +1,23 @@
 import { httpGetJson } from "./http-get.js";
 
+const EVERGREEN_APPS_URL = "https://evergreen-api.stealthpuppy.com/apps";
 const EVERGREEN_APP_URL = "https://evergreen-api.stealthpuppy.com/app";
+
+/**
+ * Looks up one entry in evergreen's /apps index by its exact 'Name' (the
+ * same field search_evergreen_app matches against) — { Name, Application,
+ * Link }, confirmed by testing against a real entry (AdoptiumTemurin25 ->
+ * Application "Adoptium Temurin 25", Link "https://adoptium.net/"). Used
+ * by scaffold_internal_package to seed a real nuspec <title>/<projectUrl>
+ * instead of leaving them as the package id / empty — this data was
+ * already being fetched by search_evergreen_app and then discarded.
+ * Returns null if nothing matches (caller falls back to its own default).
+ */
+export async function fetchEvergreenAppIndexEntry(name) {
+  const { ok, data } = await httpGetJson(EVERGREEN_APPS_URL);
+  if (!ok || !Array.isArray(data)) return null;
+  return data.find((app) => app.Name === name) ?? null;
+}
 
 /** Shared by get_evergreen_app_info and scaffold_internal_package. */
 export async function fetchEvergreenVariants(name) {

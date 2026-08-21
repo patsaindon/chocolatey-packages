@@ -108,6 +108,10 @@ jobs:
             package's silent_args. Then call scaffold_internal_package
             with the package_id/owner_team/source_url/notes from the form
             plus whichever of evergreen_app_name/silent_args you found,
+            plus the form's "Software name"/"Vendor / publisher" fields as
+            title/vendor_name if given (these seed the nuspec's
+            <title>/<authors> — leave them out and let evergreen or the
+            generic fallback handle it if the form left them blank),
             call lint_package on the result to confirm it's structurally
             valid. If you learned or corrected a vendor-level fact this
             run (not already exactly what lookup_package_knowledge

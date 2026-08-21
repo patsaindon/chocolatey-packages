@@ -2,30 +2,42 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { textResult, REPO_ROOT } from "../lib/exec.js";
-import { fetchEvergreenVariants, pickPreferredVariant } from "../lib/evergreen.js";
+import { fetchEvergreenVariants, pickPreferredVariant, fetchEvergreenAppIndexEntry } from "../lib/evergreen.js";
 
 export const name = "scaffold_internal_package";
 
 export const config = {
   title: "Scaffold Internal Package",
   description:
-    "Copies internal/_template/ to internal/<package_id>/ and fills in the placeholders it can (id, owner, description, install script, update.ps1's releases URL). Pass evergreen_app_name (from search_evergreen_app) to generate a real, working au_GetLatest instead of a generic placeholder, and/or silent_args (from search_silent_install_switch) to fill in a real silent-install flag. Without either, both still need a human to research and fill in before this package updates itself correctly.",
+    "Copies internal/_template/ to internal/<package_id>/ and fills in the placeholders it can (id, owner, description, install script, update.ps1's releases URL, and a coherent title/authors/projectUrl/tags for the nuspec). Pass evergreen_app_name (from search_evergreen_app) to generate a real, working au_GetLatest AND to seed the nuspec's title/authors/projectUrl from evergreen's own app index, instead of a generic placeholder for either. Pass title/vendor_name explicitly to override or to fill these in for a non-evergreen package. Pass silent_args (from search_silent_install_switch) to fill in a real silent-install flag. Anything left unfilled still needs a human to research before this package updates itself correctly.",
   inputSchema: {
     package_id: z
       .string()
       .regex(/^[a-z0-9][a-z0-9.\-]*$/i, "must be a valid Chocolatey package id")
       .describe("Package id — becomes both the folder name and the nuspec filename"),
-    owner_team: z.string().describe("Owning team, for metadata.yml / nuspec authors+owners"),
+    owner_team: z.string().describe("Owning team, for metadata.yml / nuspec owners"),
+    title: z
+      .string()
+      .optional()
+      .describe(
+        "Human-friendly display name for the nuspec's <title>, e.g. 'Eclipse Temurin 25 (JDK)'. Falls back to evergreen's own app-index name when evergreen_app_name is given, else a prettified package_id."
+      ),
+    vendor_name: z
+      .string()
+      .optional()
+      .describe(
+        "The software's actual publisher/vendor, for the nuspec's <authors> — distinct from owner_team, which is who owns *this Chocolatey package* internally, not who makes the software. Falls back to evergreen's app-index name when evergreen_app_name is given, else owner_team."
+      ),
     source_url: z
       .string()
       .url()
       .optional()
-      .describe("Where this software publishes releases, if known yet"),
+      .describe("Where this software publishes releases, and the nuspec's <projectUrl> — falls back to evergreen's own homepage link when evergreen_app_name is given"),
     notes: z.string().optional().describe("Short description / notes"),
     evergreen_app_name: z
       .string()
       .optional()
-      .describe("Exact 'name' from search_evergreen_app, if this app is evergreen-supported — generates a real au_GetLatest"),
+      .describe("Exact 'name' from search_evergreen_app, if this app is evergreen-supported — generates a real au_GetLatest and seeds title/vendor_name/source_url from evergreen's app index"),
     evergreen_image_type: z
       .string()
       .optional()
@@ -38,6 +50,27 @@ export const config = {
       .describe("Real silent-install switch, e.g. from search_silent_install_switch (falls back to a generic '/S' guess if omitted)"),
   },
 };
+
+/** 'visual-studio-code' / 'visual_studio_code' -> 'Visual Studio Code'. Only
+ * used as a last-resort <title> fallback when neither an explicit title
+ * nor an evergreen app-index name is available — always prefer one of
+ * those when they exist, since this is a mechanical guess, not a real name. */
+function prettifyPackageId(packageId) {
+  return packageId
+    .replace(/[-_.]+/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => (/^\d/.test(word) ? word : word[0].toUpperCase() + word.slice(1)))
+    .join(" ");
+}
+
+/** 'Adoptium Temurin 25' -> 'adoptium-temurin-25', for an extra nuspec tag. */
+function slugifyTag(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 async function replaceInFile(filePath, replacements) {
   let content = await fs.readFile(filePath, "utf8");
@@ -61,7 +94,9 @@ async function replaceInFile(filePath, replacements) {
  * evergreen-api directly for a known-supported app, using the exact
  * $Latest.URL32/Checksum32 property names the template's au_SearchReplace
  * already expects — no changes needed there. Returns null (caller keeps
- * the generic placeholder) if evergreen has nothing for this name.
+ * the generic placeholder) if evergreen has nothing for this name, else
+ * { code, imageType } — imageType is surfaced too so the caller can add
+ * it as a nuspec tag without a second, redundant variant fetch.
  */
 async function buildEvergreenGetLatest(evergreenAppName, imageType) {
   const variants = await fetchEvergreenVariants(evergreenAppName);
@@ -78,7 +113,7 @@ async function buildEvergreenGetLatest(evergreenAppName, imageType) {
     ? ` -and $_.ImageType -eq '${preferred.ImageType}'`
     : "";
 
-  return `function global:au_GetLatest {
+  const code = `function global:au_GetLatest {
     # Seeded from evergreen-api.stealthpuppy.com (https://eucpilots.com/evergreen/api/)
     # for '${evergreenAppName}' — verify the filter below still matches what
     # this package actually wants to ship (was: Architecture=${preferred.Architecture ?? "unknown"}${preferred.ImageType ? `, ImageType=${preferred.ImageType}` : ""}).
@@ -114,11 +149,15 @@ async function buildEvergreenGetLatest(evergreenAppName, imageType) {
         ChecksumType32 = 'sha256'
     }
 }`;
+
+  return { code, imageType: preferred.ImageType };
 }
 
 export async function handler({
   package_id,
   owner_team,
+  title,
+  vendor_name,
   source_url,
   notes,
   evergreen_app_name,
@@ -148,13 +187,67 @@ export async function handler({
 
   const description = notes || `Internal package for ${package_id}.`;
 
+  // Fetched once, up front, so both the nuspec (title/authors/projectUrl)
+  // and update.ps1 (au_GetLatest) can draw from the same evergreen data —
+  // this was already being fetched by search_evergreen_app and then
+  // discarded, leaving the nuspec's <title> as the bare package id and
+  // <projectUrl> empty even for a well-supported app. A lookup failure
+  // here is never fatal: every field it would have seeded still has an
+  // explicit-parameter or generic fallback.
+  let appIndexEntry = null;
+  if (evergreen_app_name) {
+    try {
+      appIndexEntry = await fetchEvergreenAppIndexEntry(evergreen_app_name);
+    } catch {
+      // non-fatal — falls back to explicit params / generic defaults below
+    }
+  }
+
+  const effectiveTitle = title || appIndexEntry?.Application || prettifyPackageId(package_id);
+  // Distinct from effectiveVendorName's owner_team fallback below: a tag
+  // should describe the *software*, not who owns the internal package, so
+  // it's only set when there's a real vendor/product name to slugify.
+  const realVendorName = vendor_name || appIndexEntry?.Application || null;
+  const effectiveVendorName = realVendorName || owner_team;
+  const effectiveProjectUrl = source_url || appIndexEntry?.Link || null;
+  const packageSourceUrl = `https://github.com/patsaindon/chocolatey-packages/tree/main/internal/${package_id}`;
+
+  let usedEvergreen = false;
+  let evergreenError = null;
+  let evergreenImageType = null;
+  if (evergreen_app_name) {
+    try {
+      const generated = await buildEvergreenGetLatest(evergreen_app_name, evergreen_image_type);
+      if (generated) {
+        await replaceInFile(path.join(targetDir, "update.ps1"), [
+          [/function global:au_GetLatest \{[\s\S]*?\n\}/, generated.code],
+        ]);
+        usedEvergreen = true;
+        evergreenImageType = generated.imageType ?? null;
+      }
+    } catch (err) {
+      evergreenError = err.message;
+    }
+  }
+
+  // Extra tags beyond the template's default 'internal': a slug for the
+  // vendor/product name (skipped if it wouldn't add anything beyond the
+  // package id itself) and, for apps like JDKs where it disambiguates
+  // real variants (Section 6.8), the image type.
+  const extraTags = [realVendorName ? slugifyTag(realVendorName) : null, evergreenImageType]
+    .filter(Boolean)
+    .filter((tag) => tag !== package_id.toLowerCase());
+  const tags = ["internal", ...new Set(extraTags)].join(" ");
+
   await replaceInFile(path.join(targetDir, `${package_id}.nuspec`), [
     [/<id>CHANGE_ME<\/id>/, `<id>${package_id}</id>`],
-    [/<title>CHANGE_ME<\/title>/, `<title>${package_id}</title>`],
-    [/<authors>CHANGE_ME<\/authors>/, `<authors>${owner_team}</authors>`],
+    [/<title>CHANGE_ME<\/title>/, `<title>${effectiveTitle}</title>`],
+    [/<authors>CHANGE_ME<\/authors>/, `<authors>${effectiveVendorName}</authors>`],
     [/<owners>CHANGE_ME<\/owners>/, `<owners>${owner_team}</owners>`],
+    [/<packageSourceUrl>CHANGE_ME<\/packageSourceUrl>/, `<packageSourceUrl>${packageSourceUrl}</packageSourceUrl>`],
     [/<description>CHANGE_ME<\/description>/, `<description>${description}</description>`],
-    ...(source_url ? [[/<projectUrl><\/projectUrl>/, `<projectUrl>${source_url}</projectUrl>`]] : []),
+    [/<tags>internal<\/tags>/, `<tags>${tags}</tags>`],
+    ...(effectiveProjectUrl ? [[/<projectUrl><\/projectUrl>/, `<projectUrl>${effectiveProjectUrl}</projectUrl>`]] : []),
   ]);
 
   await replaceInFile(path.join(targetDir, "metadata.yml"), [
@@ -168,22 +261,6 @@ export async function handler({
     [/softwareName\s*= 'CHANGE_ME\*'/, `softwareName   = '${package_id}*'`],
     ...(silent_args ? [[/silentArgs\s*= '\/S'(\s*#[^\n]*)?/, `silentArgs     = '${silent_args}'`]] : []),
   ]);
-
-  let usedEvergreen = false;
-  let evergreenError = null;
-  if (evergreen_app_name) {
-    try {
-      const generated = await buildEvergreenGetLatest(evergreen_app_name, evergreen_image_type);
-      if (generated) {
-        await replaceInFile(path.join(targetDir, "update.ps1"), [
-          [/function global:au_GetLatest \{[\s\S]*?\n\}/, generated],
-        ]);
-        usedEvergreen = true;
-      }
-    } catch (err) {
-      evergreenError = err.message;
-    }
-  }
 
   if (!usedEvergreen) {
     await replaceInFile(path.join(targetDir, "update.ps1"), [
@@ -213,6 +290,14 @@ export async function handler({
             ? `evergreen_app_name given but lookup failed (${evergreenError}) — fell back to the generic placeholder`
             : "generic placeholder — no evergreen_app_name given",
         silent_args_source: silent_args ? `seeded ('${silent_args}')` : "generic '/S' placeholder — no silent_args given",
+        nuspec: {
+          title: `${effectiveTitle}${title ? " (explicit)" : appIndexEntry ? " (from evergreen's app index)" : " (prettified package_id — pass 'title' explicitly if this doesn't read naturally)"}`,
+          authors: `${effectiveVendorName}${vendor_name ? " (explicit)" : appIndexEntry ? " (from evergreen's app index)" : " (fell back to owner_team — pass 'vendor_name' if this software has a different real publisher)"}`,
+          projectUrl: effectiveProjectUrl
+            ? `${effectiveProjectUrl}${source_url ? " (explicit)" : " (from evergreen's app index)"}`
+            : "left empty — pass 'source_url' or an evergreen_app_name with a homepage link",
+          tags,
+        },
         still_needs_manual_review:
           "update.ps1's au_GetLatest — verify the architecture/version-matching logic (and the releases URL/regex, if not evergreen-seeded) against this vendor's real release page before merging.",
       },

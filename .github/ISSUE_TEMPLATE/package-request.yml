@@ -34,6 +34,30 @@ body:
       required: false
 
   - type: input
+    id: software_name
+    attributes:
+      label: Software name (internal packages only)
+      description: >
+        The real product name, for the package's nuspec <title> — e.g.
+        "Eclipse Temurin 25 (JDK)", not the package id. Leave blank to let
+        the agent try evergreen-api first and fall back to a prettified
+        package id otherwise.
+    validations:
+      required: false
+
+  - type: input
+    id: vendor_name
+    attributes:
+      label: Vendor / publisher (internal packages only)
+      description: >
+        Who actually publishes this software, for the nuspec <authors> —
+        e.g. "Eclipse Adoptium", not your own team (that's "Owning team"
+        below). Leave blank to let the agent try evergreen-api first and
+        fall back to the owning team otherwise.
+    validations:
+      required: false
+
+  - type: input
     id: owner_team
     attributes:
       label: Owning team
