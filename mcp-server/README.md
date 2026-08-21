@@ -15,6 +15,7 @@ file/git operation — no package-management logic is reimplemented here. See
 | `lint_package` | `scripts/lint-nuspec.ps1` | none (read-only) |
 | `search_evergreen_app` | [evergreen-api.stealthpuppy.com](https://eucpilots.com/evergreen/api/) `/apps` index | none (read-only) |
 | `get_evergreen_app_info` | evergreen-api `/app/{name}` | none (read-only) |
+| `get_community_package_tools` | downloads a Community package (read-only, no internalize/push) and returns its real `tools/chocolateyInstall.ps1`/`chocolateyUninstall.ps1` — tries `<id>.install` automatically if the bare id is a tools-less metapackage | none (read-only) |
 | `search_silent_install_switch` | [manageengine.com](https://www.manageengine.com/products/desktop-central/software-installation) catalog scrape — best-effort, one snapshot page, not exhaustive | none (read-only) |
 | `lookup_package_knowledge` | reads `knowledge/<vendor>.yml` — facts already confirmed about a vendor's packages from an earlier one (checksum field name, image-type default, version quirks, silent switch) | none (read-only) |
 | `scaffold_internal_package` | copies `internal/_template/`, fills in placeholders; pass `evergreen_app_name`/`silent_args` (from the tools above) to seed a real `au_GetLatest`/silent switch instead of a generic placeholder — also seeds the nuspec's `<title>`/`<authors>`/`<projectUrl>`/`<tags>` from evergreen's own app index, or from explicit `title`/`vendor_name`/`source_url` params, instead of leaving them as the bare package id / empty | local working tree only |

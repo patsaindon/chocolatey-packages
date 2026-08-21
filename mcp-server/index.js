@@ -12,6 +12,7 @@ import * as getEvergreenAppInfo from "./tools/get-evergreen-app-info.js";
 import * as searchSilentInstallSwitch from "./tools/search-silent-install-switch.js";
 import * as lookupPackageKnowledge from "./tools/lookup-package-knowledge.js";
 import * as writePackageKnowledge from "./tools/write-package-knowledge.js";
+import * as getCommunityPackageTools from "./tools/get-community-package-tools.js";
 
 // Package-creation tools for the issue-triggered package request flow.
 // See docs/architecture.md and .github/workflows/handle-package-request.yml.
@@ -35,6 +36,7 @@ for (const tool of [
   searchSilentInstallSwitch,
   lookupPackageKnowledge,
   writePackageKnowledge,
+  getCommunityPackageTools,
 ]) {
   server.registerTool(tool.name, tool.config, tool.handler);
 }
