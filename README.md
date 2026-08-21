@@ -1,16 +1,51 @@
 # chocolatey-packages
 
-Enterprise lifecycle management for Chocolatey packages — internalized from the Chocolatey Community Repository and internally authored — governed by GitHub Actions and promoted through a staging → production feed.
+Enterprise lifecycle management for Chocolatey packages — internalized from the Chocolatey Community Repository, and internally authored — with no manual manifest-tracking: package staleness is answered by diffing feed contents directly, new packages are requested through a GitHub Issue that an AI agent turns into a bootstrap push or a PR, and everything converges on the same scan → promote pipeline before reaching production.
 
-See [docs/architecture.md](docs/architecture.md) for the full architecture design.
+See **[docs/architecture.md](docs/architecture.md)** for the full design, including what's already validated, what's still open, and how to test the whole thing locally without a real Nexus instance.
+
+## How it works
+
+- **Internalizing a Community package**: one-time bootstrap (`internalize-community-package.yml`, or via the Issue → agent flow below) downloads, internalizes, scans (Windows Defender + Grype), and pushes it to the staging feed. From then on, `refresh-internalized-packages.yml` runs daily, diffing staging against the Community Repository and re-internalizing anything newer — no manifest file to keep in sync, no PR to merge.
+- **Internal packages** are [AU](https://github.com/majkinetor/AU) (Chocolatey Automatic Packages): each one checks its own vendor's release page directly via `update.ps1`. `update-internal-packages.yml` runs the same daily-diff model against them; `test-internal-packages.yml` validates changes on a PR without ever touching a feed.
+- **Promotion to production** (`promote-package.yml`) diffs staging against production, re-scans anything about to move, and pushes it on — gated by a GitHub Environment with required reviewers.
+- **Requesting a new package** you haven't touched before: open an Issue from the `package-request` template. `handle-package-request.yml` runs an AI agent (Claude Code, headless) against a small MCP server (`mcp-server/`) exposing five narrowly-scoped tools — it either bootstraps a Community package straight to staging, or scaffolds a new internal AU package and opens a PR for a human to review. The agent never touches production and never merges its own PR.
+
+```mermaid
+flowchart LR
+    ISSUE[Package Request Issue] --> AGENT[Claude Code + MCP server]
+    AGENT -- internalized --> STAGING[(staging feed)]
+    AGENT -- internal --> PR[Pull Request]
+    STAGING -- daily diff --> STAGING
+    PR --> REPO[internal/&lt;id&gt;]
+    REPO -- daily diff --> STAGING
+    STAGING -- reviewed promotion --> PROD[(production feed)]
+```
 
 ## Layout
 
-- [internal/](internal/) — internally authored packages (see [internal/README.md](internal/README.md))
-- [internalized/](internalized/) — Community packages internalized for offline install (see [internalized/README.md](internalized/README.md))
-- [.github/workflows/](.github/workflows/) — CI/CD: internalize, publish, promote, and scheduled update-check workflows
-- [scripts/](scripts/) — supporting scripts called by the workflows (scan, promote, version-check — currently Phase 1 placeholders, see TODOs in each file)
+| Path | What's there |
+|---|---|
+| [docs/architecture.md](docs/architecture.md) | The full design — start here |
+| [internal/](internal/) | AU-based internally authored packages ([internal/README.md](internal/README.md)) |
+| [internalized/](internalized/) | Community packages internalized for offline install — no manifest, just a README ([internalized/README.md](internalized/README.md)) |
+| [.github/ISSUE_TEMPLATE/package-request.yml](.github/ISSUE_TEMPLATE/package-request.yml) | The request form that triggers the agent-driven creation flow |
+| [.github/workflows/](.github/workflows/) | Every workflow described above |
+| [scripts/](scripts/) | Operational PowerShell: linting, scanning, the diff-based internalize/promote logic |
+| [mcp-server/](mcp-server/) | The MCP server behind the Issue-triggered creation flow ([mcp-server/README.md](mcp-server/README.md)) |
+| [update_all.ps1](update_all.ps1) / [test_all.ps1](test_all.ps1) | AU's repo-root drivers for `internal/` packages |
 
 ## Status
 
-Phase 1 (pipeline foundation) scaffold — see [docs/architecture.md](docs/architecture.md) section 14 for the full roadmap. The workflow skeletons and scripts here are illustrative; scan/promote logic and feed credentials still need to be filled in before this pipeline is production-ready.
+The pipeline described above is **implemented and has been validated end-to-end as real GitHub Actions runs** (`internalize-community-package.yml`, `refresh-internalized-packages.yml`, and `promote-package.yml` have each completed successfully on the self-hosted runner), plus the MCP server and a full headless-agent run against it. Three real bugs and one runner-environment issue were found and fixed by that testing, not just by reading the code — see [docs/architecture.md § 14](docs/architecture.md#14-implementation-status--roadmap) for the details and for what's still open (a real Nexus instance, an approval-gated `production-feed` Environment, a real internal AU package to test against, and a few deliberately-scoped gaps against the original design).
+
+## Testing without a real Nexus
+
+Nothing in this pipeline calls a Nexus-specific API — every script talks plain `choco search`/`download`/`push`. That means a throwaway NuGet-compatible feed in Docker exercises the exact same code paths:
+
+```
+docker run -d --name choco-test-staging -p 5555:8080 -e ApiKey=test-key bagetter/bagetter:latest
+docker run -d --name choco-test-prod    -p 5556:8080 -e ApiKey=test-key-prod bagetter/bagetter:latest
+```
+
+Point `STAGING_FEED_URL`/`PRODUCTION_FEED_URL` at `http://localhost:5555/v3/index.json` / `http://localhost:5556/v3/index.json`. See [docs/architecture.md § 14](docs/architecture.md#14-implementation-status--roadmap) for the full recipe.
