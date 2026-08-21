@@ -1,0 +1,18 @@
+# Facts learned about this vendor's packages while onboarding or
+# updating them -- checksum field names, image-type/architecture
+# defaults, version-format quirks, known-good silent-install switches.
+# Read by the package-request agent before scaffolding (see
+# lookup_package_knowledge) so an already-solved quirk isn't
+# rediscovered by trial and error on the next package from the same
+# vendor. Written only locally by write_package_knowledge -- a human
+# reviews every change here in the same PR as the package it came
+# from, never a silent agent write. See docs/architecture.md section 6.8.
+
+evergreen_app_prefix: AdoptiumTemurin
+checksum_field: Checksum
+architecture_default: x64
+image_type_default: jdk
+version_sanitize: "strip a trailing -LTS suffix, then take the part before the first +"
+notes: "evergreen-api.stealthpuppy.com's AdoptiumTemurin entries expose the checksum under 'Checksum', not 'Sha256' -- confirmed by testing against a different vendor (7-Zip) that does use 'Sha256', so this isn't the universal field name. ImageType has both 'jdk' and 'jre' entries per version; this project's internal Temurin packages want the JDK. Version strings can look like '25.0.4.1+1-LTS' -- NuGet/choco rejects the '-LTS' suffix and the '+build' segment, and some versions have more numeric segments than NuGet's 4-segment limit even after stripping those, so au_GetLatest should still fail loudly rather than silently truncate if that happens."
+last_verified: "2026-08-21"
+last_verified_via: "temurin25 (PR #6)"
