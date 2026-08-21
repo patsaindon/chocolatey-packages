@@ -1,0 +1,121 @@
+name: Handle Package Request
+# Triggered by an Issue opened from .github/ISSUE_TEMPLATE/package-request.yml.
+# An agent (Claude Code, headless) uses the MCP server in mcp-server/ to
+# either bootstrap-internalize a Community package straight to the staging
+# feed, or scaffold+PR a new internal AU package — never touching
+# production, never merging its own PR. See docs/architecture.md.
+#
+# Runner prerequisites beyond the existing choco/git/gh/grype ones: Node.js
+# (verified against v26 here) and the `claude` CLI, both on PATH.
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write        # open_pull_request pushes a branch
+  pull-requests: write    # ...and opens a PR for it
+  issues: write           # posting the result back as a comment
+
+jobs:
+  handle-request:
+    if: contains(github.event.issue.labels.*.name, 'package-request')
+    runs-on: [self-hosted, windows, choco-internalize]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MCP server dependencies
+        shell: pwsh
+        run: |
+          Push-Location mcp-server
+          npm ci
+          Pop-Location
+
+      - name: Run the agent against the request
+        id: agent
+        shell: pwsh
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STAGING_FEED_URL: ${{ secrets.STAGING_FEED_URL }}
+          STAGING_API_KEY: ${{ secrets.STAGING_API_KEY }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          # Passed via env, not interpolated into the script below — the
+          # issue body is untrusted user input and must never be spliced
+          # directly into a run: block.
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          $prompt = @"
+          A packager opened this GitHub issue (#$env:ISSUE_NUMBER,
+          titled "$env:ISSUE_TITLE") using the "Package Request" form. Its
+          body (parsed form fields as markdown):
+
+          ---
+          $env:ISSUE_BODY
+          ---
+
+          Do exactly one of the following, based on the "Package type" field:
+
+          - "Internalized (from the Chocolatey Community Repository)": call
+            search_community_package to confirm the package id exists, then
+            call bootstrap_internalize_package for it (omit version to get
+            latest). This pushes straight to the STAGING feed only — there
+            is nothing to open a PR for, since internalized packages have no
+            tracked manifest file (see internalized/README.md).
+
+          - "Internal (AU-based ...)": call scaffold_internal_package with
+            the package_id/owner_team/source_url/notes from the form, then
+            call lint_package on the result to confirm it's structurally
+            valid, then call open_pull_request with all the files scaffold_
+            internal_package reported, a branch named
+            package-request/<package_id>, and a PR body that includes a
+            note that update.ps1's au_GetLatest still needs human review
+            before this package will actually update itself correctly.
+
+          If anything fails (package not found, lint fails, tool error),
+          stop and report the failure — do not retry with guessed values.
+
+          Your entire final response must be exactly one line, one of:
+          RESULT: <short human-readable summary of what you did, including
+          any PR URL or staging push confirmation>
+          FAILED: <short reason>
+          "@
+
+          claude -p $prompt `
+            --mcp-config mcp-server/mcp-config.json `
+            --strict-mcp-config `
+            --allowedTools "mcp__chocolatey-packages__search_community_package mcp__chocolatey-packages__bootstrap_internalize_package mcp__chocolatey-packages__scaffold_internal_package mcp__chocolatey-packages__lint_package mcp__chocolatey-packages__open_pull_request" `
+            --permission-mode bypassPermissions `
+            --output-format json > agent_output.json
+
+          $parsed = Get-Content agent_output.json -Raw | ConvertFrom-Json
+          $resultText = $parsed.result
+
+          Write-Host $resultText
+
+          # Multiline-safe GITHUB_OUTPUT form — the agent was told to
+          # answer in exactly one line, but nothing guarantees it always
+          # will, and a plain key=value write would corrupt the output
+          # file if it doesn't.
+          $delimiter = "ghadelim_$([guid]::NewGuid().ToString('N'))"
+          "result_text<<$delimiter" >> $env:GITHUB_OUTPUT
+          $resultText >> $env:GITHUB_OUTPUT
+          $delimiter >> $env:GITHUB_OUTPUT
+
+          if ($parsed.is_error) { exit 1 }
+
+      - name: Comment on the issue
+        if: always()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          # Via env, not interpolated directly — this is the agent's
+          # response, itself derived from untrusted issue content (possible
+          # prompt injection), same reasoning as ISSUE_BODY above.
+          RESULT_TEXT: ${{ steps.agent.outputs.result_text }}
+        run: |
+          $body = $env:RESULT_TEXT
+          if (-not $body) { $body = 'The agent run failed before producing a result — check the workflow log.' }
+          gh issue comment $env:ISSUE_NUMBER --body $body

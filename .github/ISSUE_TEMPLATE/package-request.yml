@@ -1,0 +1,50 @@
+name: Package Request
+description: Request a new Chocolatey package — internalized from the Community Repository, or an internal AU-based package.
+title: "[Package Request] "
+labels: ["package-request"]
+body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: Package type
+      options:
+        - Internalized (from the Chocolatey Community Repository)
+        - Internal (AU-based — tracks a vendor's own release page)
+    validations:
+      required: true
+
+  - type: input
+    id: package_id
+    attributes:
+      label: Package id
+      description: >
+        For an internalized package, the exact id as it appears on
+        community.chocolatey.org. For an internal package, the id you want
+        to give it — this becomes the folder name and the .nuspec filename.
+      placeholder: e.g. 7zip, or acme-launcher
+    validations:
+      required: true
+
+  - type: input
+    id: source_url
+    attributes:
+      label: Source URL (internal packages only)
+      description: Where this software publishes its releases — a vendor download/releases page, an internal file share, or an artifact repo. Leave blank for internalized packages.
+    validations:
+      required: false
+
+  - type: input
+    id: owner_team
+    attributes:
+      label: Owning team
+      description: Who should be notified if this package needs attention later.
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Anything else useful — why this is needed, known caveats, special install flags, etc.
+    validations:
+      required: false

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "chocolatey-packages": {
+      "command": "node",
+      "args": ["mcp-server/index.js"]
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "chocolatey-packages-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server exposing package-creation tools for the issue-triggered package request flow. See docs/architecture.md and .github/workflows/handle-package-request.yml.",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^3.24.0"
+  }
+}
