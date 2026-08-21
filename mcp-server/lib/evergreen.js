@@ -11,8 +11,27 @@ export async function fetchEvergreenVariants(name) {
   return data;
 }
 
-/** Prefers x64, falls back to whatever's first if no x64 variant exists. */
-export function pickPreferredVariant(variants) {
-  const x64 = variants.find((v) => v.Architecture?.toLowerCase() === "x64");
-  return x64 ?? variants[0];
+/**
+ * Prefers x64. Some apps (JDKs in particular) publish more than one x64
+ * variant distinguished only by ImageType (e.g. 'jdk' vs 'jre') — found by
+ * testing against a real request for AdoptiumTemurin25, which has exactly
+ * two x64 variants and nothing else to tell them apart. Pass imageType to
+ * pick explicitly; otherwise defaults to 'jdk' over 'jre' when both exist,
+ * since that's almost always what's actually wanted for a package named
+ * after the runtime. Apps with no ImageType field at all (most of them)
+ * are unaffected either way.
+ */
+export function pickPreferredVariant(variants, { imageType } = {}) {
+  const x64Variants = variants.filter((v) => v.Architecture?.toLowerCase() === "x64");
+  const pool = x64Variants.length > 0 ? x64Variants : variants;
+
+  if (imageType) {
+    const explicit = pool.find((v) => v.ImageType?.toLowerCase() === imageType.toLowerCase());
+    if (explicit) return explicit;
+  }
+
+  const jdk = pool.find((v) => v.ImageType?.toLowerCase() === "jdk");
+  if (jdk) return jdk;
+
+  return pool[0];
 }

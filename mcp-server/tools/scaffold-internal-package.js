@@ -26,6 +26,12 @@ export const config = {
       .string()
       .optional()
       .describe("Exact 'name' from search_evergreen_app, if this app is evergreen-supported — generates a real au_GetLatest"),
+    evergreen_image_type: z
+      .string()
+      .optional()
+      .describe(
+        "Some evergreen apps (JDKs especially) publish more than one x64 variant distinguished only by ImageType (e.g. 'jdk' vs 'jre') — check get_evergreen_app_info first if unsure; defaults to preferring 'jdk' over 'jre' when both exist and this is omitted"
+      ),
     silent_args: z
       .string()
       .optional()
@@ -36,7 +42,16 @@ export const config = {
 async function replaceInFile(filePath, replacements) {
   let content = await fs.readFile(filePath, "utf8");
   for (const [pattern, replacement] of replacements) {
-    content = content.replace(pattern, replacement);
+    // A replacer FUNCTION, not the bare string: found by testing that
+    // JS's String.replace() treats a string replacement's own '$' as
+    // special-pattern syntax ($&, $`, $', $1..$99, $$) — the generated
+    // au_GetLatest body legitimately contains '$' for both PowerShell
+    // variable sigils and regex end-anchors, and '$\'' (dollar directly
+    // followed by a closing quote) matched the "insert everything after
+    // the match" pattern, splicing the rest of the file into the middle
+    // of the generated function body. A function's return value is
+    // always inserted literally, sidestepping this entirely.
+    content = content.replace(pattern, () => replacement);
   }
   await fs.writeFile(filePath, content, "utf8");
 }
@@ -48,30 +63,68 @@ async function replaceInFile(filePath, replacements) {
  * already expects — no changes needed there. Returns null (caller keeps
  * the generic placeholder) if evergreen has nothing for this name.
  */
-async function buildEvergreenGetLatest(evergreenAppName) {
+async function buildEvergreenGetLatest(evergreenAppName, imageType) {
   const variants = await fetchEvergreenVariants(evergreenAppName);
-  const preferred = pickPreferredVariant(variants);
+  const preferred = pickPreferredVariant(variants, { imageType });
   if (!preferred) return null;
+
+  // The ImageType condition must be baked into the *generated* filter too,
+  // not just used to pick the seed file's initial content — otherwise
+  // every subsequent real au_GetLatest run hits the same jdk-vs-jre
+  // ambiguity this was written to solve, since evergreen still returns
+  // both variants every time. Found by testing against AdoptiumTemurin25,
+  // which has exactly two x64 variants with no other distinguishing field.
+  const imageTypeCondition = preferred.ImageType
+    ? ` -and $_.ImageType -eq '${preferred.ImageType}'`
+    : "";
 
   return `function global:au_GetLatest {
     # Seeded from evergreen-api.stealthpuppy.com (https://eucpilots.com/evergreen/api/)
-    # for '${evergreenAppName}' — verify the architecture filter below still
-    # matches what this package actually wants to ship (was: ${preferred.Architecture ?? "unknown"}).
+    # for '${evergreenAppName}' — verify the filter below still matches what
+    # this package actually wants to ship (was: Architecture=${preferred.Architecture ?? "unknown"}${preferred.ImageType ? `, ImageType=${preferred.ImageType}` : ""}).
     $releases = "https://evergreen-api.stealthpuppy.com/app/${evergreenAppName}"
     $variants = Invoke-RestMethod -Uri $releases -UserAgent "chocolatey-packages-mcp-server"
-    $latest = $variants | Where-Object { $_.Architecture -eq '${preferred.Architecture ?? ""}' } | Select-Object -First 1
+    $latest = $variants | Where-Object { $_.Architecture -eq '${preferred.Architecture ?? ""}'${imageTypeCondition} } | Select-Object -First 1
     if (-not $latest) { throw "No matching evergreen-api variant found for ${evergreenAppName}." }
+
+    # The checksum field name varies per app — found by testing: 7zip uses
+    # 'Sha256', AdoptiumTemurin25 uses 'Checksum'. Try both rather than
+    # hardcoding one and silently getting an empty checksum for apps that
+    # use the other name.
+    $checksum = if ($latest.Sha256) { $latest.Sha256 } else { $latest.Checksum }
+
+    # Evergreen's Version can carry build-metadata syntax NuGet/choco
+    # versions don't accept (e.g. '25.0.4.1+1-LTS') — same sanitization
+    # already proven to work in production for temurin17's own
+    # hand-written au_GetLatest. But found by testing a *different* real
+    # app (Temurin25): that replacement isn't always enough on its own —
+    # some vendors' version strings have more numeric segments than
+    # NuGet/choco's 4-segment limit even after it, which temurin17's
+    # version format happened not to hit. Fail loudly here instead of
+    # letting choco pack fail later with a more confusing error.
+    $version = $latest.Version -replace '\\+', '.'
+    if ($version -notmatch '^\\d+(\\.\\d+){0,3}(-.+)?$') {
+        throw "Sanitized version '$version' has more than 4 numeric segments (NuGet/choco's limit) — adjust this au_GetLatest's version handling for ${evergreenAppName}'s actual version format."
+    }
 
     return @{
         URL32          = $latest.URI
-        Version        = $latest.Version
-        Checksum32     = $latest.Sha256
+        Version        = $version
+        Checksum32     = $checksum
         ChecksumType32 = 'sha256'
     }
 }`;
 }
 
-export async function handler({ package_id, owner_team, source_url, notes, evergreen_app_name, silent_args }) {
+export async function handler({
+  package_id,
+  owner_team,
+  source_url,
+  notes,
+  evergreen_app_name,
+  evergreen_image_type,
+  silent_args,
+}) {
   const templateDir = path.join(REPO_ROOT, "internal", "_template");
   const targetDir = path.join(REPO_ROOT, "internal", package_id);
 
@@ -120,7 +173,7 @@ export async function handler({ package_id, owner_team, source_url, notes, everg
   let evergreenError = null;
   if (evergreen_app_name) {
     try {
-      const generated = await buildEvergreenGetLatest(evergreen_app_name);
+      const generated = await buildEvergreenGetLatest(evergreen_app_name, evergreen_image_type);
       if (generated) {
         await replaceInFile(path.join(targetDir, "update.ps1"), [
           [/function global:au_GetLatest \{[\s\S]*?\n\}/, generated],
