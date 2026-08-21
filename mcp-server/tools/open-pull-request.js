@@ -37,12 +37,44 @@ async function ensureGitIdentity() {
   }
 }
 
+/**
+ * Found by testing: a request retried after an earlier attempt's PR-create
+ * step failed (e.g. the repo's Actions PR-creation setting was off) leaves
+ * a pushed branch behind with no PR for it. The next attempt's plain
+ * `git checkout -b` then fails with "branch already exists". Handles both
+ * cases: an existing PR for this branch is reported back as-is (idempotent
+ * success, nothing to redo); a branch with no PR is machine-owned by
+ * naming convention (package-request/<id>), so it's safe to drop and
+ * recreate rather than fail the whole retry on stale state.
+ */
+async function reconcileExistingBranch(branch, base) {
+  const prList = await run("gh", ["pr", "list", "--head", branch, "--state", "all", "--json", "url,state"]);
+  if (prList.code === 0 && prList.stdout.trim()) {
+    const prs = JSON.parse(prList.stdout);
+    if (prs.length > 0) {
+      return { existingPrUrl: prs[0].url };
+    }
+  }
+
+  // Can't delete a branch that's currently checked out — a prior failed
+  // call may have left the working tree on it.
+  await run("git", ["checkout", base]).catch(() => {});
+  await run("git", ["branch", "-D", branch]).catch(() => {});
+  await run("git", ["push", "origin", "--delete", branch]).catch(() => {});
+  return {};
+}
+
 export async function handler({ branch, title, body, files, base }) {
   if (!process.env.GH_TOKEN && !process.env.GITHUB_TOKEN) {
     return textResult("GH_TOKEN (or GITHUB_TOKEN) is not set — cannot authenticate gh.", true);
   }
   if (files.length === 0) {
     return textResult("No files given to commit.", true);
+  }
+
+  const { existingPrUrl } = await reconcileExistingBranch(branch, base);
+  if (existingPrUrl) {
+    return textResult(existingPrUrl);
   }
 
   await ensureGitIdentity();
