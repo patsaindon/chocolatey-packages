@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>temurin25</id>
+    <version>0.0.0</version>
+    <title>temurin25</title>
+    <authors>platform-engineering</authors>
+    <owners>platform-engineering</owners>
+    <projectUrl>https://github.com/adoptium/temurin25-binaries/releases/latest</projectUrl>
+    <description>Internal AU-based package tracking Adoptium Temurin 25 releases</description>
+    <tags>internal</tags>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
