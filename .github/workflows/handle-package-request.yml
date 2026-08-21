@@ -24,6 +24,16 @@ permissions:
   pull-requests: write    # ...and opens a PR for it
   issues: write           # posting the result back as a comment
 
+# Listening to both 'opened' and 'labeled' (above) means an issue created
+# already-labeled can fire both events for the same issue — confirmed by
+# testing: an `--label` issue create produced two concurrent runs for one
+# request. One group per issue means the second event cancels/supersedes
+# the first instead of running the agent (and potentially opening a PR,
+# or pushing to staging) twice for the same request.
+concurrency:
+  group: package-request-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
   handle-request:
     if: contains(github.event.issue.labels.*.name, 'package-request')
