@@ -83,4 +83,13 @@ jobs:
           STAGING_FEED_URL: ${{ secrets.STAGING_FEED_URL }}
           STAGING_API_KEY: ${{ secrets.STAGING_API_KEY }}
         run: |
-          choco push .\packages\*.nupkg --source=$env:STAGING_FEED_URL --api-key=$env:STAGING_API_KEY
+          # choco.exe does not glob-expand *.nupkg itself, and pwsh doesn't
+          # do bash-style wildcard expansion for external-command arguments
+          # either — 'choco push .\packages\*.nupkg' passes that literal
+          # string through and fails with "File specified is either not
+          # found or not a .nupkg file", even with real files present. Found
+          # by actually running this step, not by reading the script.
+          Get-ChildItem -Path .\packages\ -Filter *.nupkg -File | ForEach-Object {
+            choco push $_.FullName --source=$env:STAGING_FEED_URL --api-key=$env:STAGING_API_KEY
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
