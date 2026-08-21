@@ -43,6 +43,18 @@
               choco download $pkgName --no-progress --internalize --force --internalize-all-urls --append-use-original-location --output-directory=$tempPath --source=$RemoteRepo
 
               if ($LASTEXITCODE -eq 0) {
+                  # Scan before pushing anywhere — this step was missing
+                  # entirely until a real end-to-end test against a live
+                  # feed showed nothing between download and push actually
+                  # checked the result (docs/architecture.md sections 6.7/
+                  # 9.2 already claimed this happened; it didn't).
+                  & (Join-Path $PSScriptRoot 'scan-package.ps1') -PackagePath $tempPath
+                  if ($LASTEXITCODE -ne 0) {
+                      Write-Warning "scan-package.ps1 flagged '$pkgName' (exit $LASTEXITCODE) — not pushing."
+                      Remove-Item -Path $tempPath -Recurse -Force -ErrorAction SilentlyContinue
+                      return
+                  }
+
                   Write-Verbose "Pushing package '$pkgName' to local repository '$LocalRepo'."
                   (Get-Item -Path (Join-Path -Path $tempPath -ChildPath "*.nupkg")).fullname | ForEach-Object {
                       choco push $_ --source=$LocalRepo --api-key $LocalRepoApiKey --force

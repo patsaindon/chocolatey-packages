@@ -245,11 +245,23 @@ These are real, implemented files now — not illustrative skeletons — so this
 
 ## 14. Implementation Status & Roadmap
 
-**Done:** the pipeline foundation described in Sections 6–9 is implemented — every script and workflow listed in Section 13 exists and has been exercised (unit-level for the PowerShell scripts against live `choco`/Community Repository calls; the MCP server through a real MCP client; a full headless `claude -p` run against the real server). What hasn't been exercised against real infrastructure: an actual Nexus staging/production feed pair (the scripts have only been run against scratch directories and the public Community Repository), and the full issue → PR / issue → staging-push path end-to-end on a real runner.
+**Done:** the pipeline foundation described in Sections 6–9 is implemented and has been validated end-to-end against a real NuGet-compatible feed — not literal Nexus, but nothing in this pipeline calls a Nexus-specific API any more (that was true of an earlier, since-retired version of the promotion script; today everything is plain `choco search`/`download`/`push`), so a stand-in feed exercises the exact same code paths. The stand-in used was [BaGetter](https://github.com/bagetter/bagetter) (a maintained, lightweight NuGet-server fork) run via Docker — see the box below. Confirmed working against it: `Get-UpdatedPackage.ps1`'s full diff → internalize → scan → push cycle (including its recursive dependency internalization), `Update-ProdRepoFromTest.ps1`'s full diff → re-scan → promote cycle, and the `bootstrap_internalize_package` MCP tool end-to-end. Two real bugs were found and fixed by this testing, not just by reading the code:
+
+- `Get-UpdatedPackage.ps1` never called `scan-package.ps1` at all — every scheduled refresh would have pushed straight to staging with no AV/CVE check, contradicting what this document already claimed in Sections 6.7/9.2.
+- `Update-ProdRepoFromTest.ps1` didn't pass `--version` to `choco download`, so it always fetched whatever was *latest* in staging regardless of which version a given diff entry was actually for — harmless when staging holds one version per package, but it silently re-downloaded/re-scanned the same latest version repeatedly and threw a confusing 409 Conflict on the second push whenever staging held more than one version of something (which it will in practice, since nothing prunes old versions from staging).
+
+What's still only validated against BaGetter, not literal Nexus: the promotion workflow's `environment: production-feed` reviewer gate (GitHub Environment behavior itself doesn't depend on the feed product, so this is low-risk), and anything Nexus-specific an eventual real deployment might still need (auth scheme, TLS, network placement) — none of which this design currently depends on. Also still open: an actual Windows self-hosted runner (everything above was run on a development machine with the same prerequisites, not the target runner), and the full issue → PR / issue → staging-push path end-to-end (the underlying MCP tools were validated individually; the `claude -p` agent loop calling them in sequence from a real issue was not).
+
+> **Testing this pipeline without Nexus:** run a throwaway NuGet-compatible feed in Docker and point `STAGING_FEED_URL`/`PRODUCTION_FEED_URL` at it — no Nexus-specific code exists to work around.
+> ```
+> docker run -d --name choco-test-staging -p 5555:8080 -e ApiKey=test-key bagetter/bagetter:latest
+> docker run -d --name choco-test-prod    -p 5556:8080 -e ApiKey=test-key-prod bagetter/bagetter:latest
+> ```
+> Source URL for both `choco` and this repo's scripts: `http://localhost:5555/v3/index.json` (BaGetter is a v3-only feed; push still goes through the standard `/api/v2/package` endpoint that choco already expects). `docker rm -f choco-test-staging choco-test-prod` tears it down — nothing persists outside the containers.
 
 **Still open, roughly in order of what would unblock real use:**
 
-1. Provision the actual Nexus `choco-staging` / `choco-prod` hosted repos and the associated secrets (`STAGING_FEED_URL`, `STAGING_API_KEY`, `PRODUCTION_FEED_URL`, `PRODUCTION_API_KEY`).
+1. Provision the actual Nexus `choco-staging` / `choco-prod` hosted repos and the associated secrets (`STAGING_FEED_URL`, `STAGING_API_KEY`, `PRODUCTION_FEED_URL`, `PRODUCTION_API_KEY`) — expected to be a drop-in swap for the BaGetter URLs above, since nothing here is Nexus-specific.
 2. Stand up the self-hosted Windows runner(s) with all prerequisites (Section 6.6) and validate each workflow against it for real.
 3. Add `ANTHROPIC_API_KEY` as a repo secret and validate `handle-package-request.yml` end-to-end against a real test issue.
 4. Point a pilot group of CCM-managed endpoints at the production feed.

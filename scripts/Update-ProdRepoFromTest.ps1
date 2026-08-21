@@ -39,9 +39,17 @@
       # iterations still expected to exist.
       $tempPath = Join-Path -Path $env:TEMP -ChildPath ([GUID]::NewGuid()).GUID
 
+      $pkgVersion = $_.version
+
       try {
-          Write-Verbose "Downloading package '$pkgName' to '$tempPath'."
-          choco download $pkgName --no-progress --output-directory=$tempPath --source=$TestRepo --force --ignore-dependencies
+          Write-Verbose "Downloading package '$pkgName' version '$pkgVersion' to '$tempPath'."
+          # --version is required here: without it, choco download always
+          # grabs whatever's latest in $TestRepo regardless of which
+          # version this diff entry is actually for. That went unnoticed
+          # until a real test against a feed holding two versions of the
+          # same package showed the same (latest) version being downloaded
+          # twice and the second push failing with a 409 Conflict.
+          choco download $pkgName --no-progress --version=$pkgVersion --output-directory=$tempPath --source=$TestRepo --force --ignore-dependencies
           if ($LASTEXITCODE -ne 0) {
               Write-Warning "Could not download package '$pkgName'."
               return
