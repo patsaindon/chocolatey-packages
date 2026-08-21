@@ -2,13 +2,13 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>temurin25</id>
-    <version>0.0.0</version>
-    <title>temurin25</title>
-    <authors>platform-engineering</authors>
+    <version>25.0.4.1</version>
+    <title>Eclipse Temurin 25 (JDK)</title>
+    <authors>Eclipse Adoptium</authors>
     <owners>platform-engineering</owners>
-    <projectUrl>https://github.com/adoptium/temurin25-binaries/releases/latest</projectUrl>
-    <description>Internal AU-based package tracking Adoptium Temurin 25 releases</description>
-    <tags>internal</tags>
+    <projectUrl>https://adoptium.net/temurin/releases/?version=25</projectUrl>
+    <description>Eclipse Temurin 25 is a production-ready, TCK-certified OpenJDK 25 distribution provided by the Eclipse Adoptium project. This internal package tracks upstream releases directly via AU and installs the x64 Windows JDK MSI.</description>
+    <tags>java jdk adoptium temurin internal</tags>
   </metadata>
   <files>
     <file src="tools\**" target="tools" />

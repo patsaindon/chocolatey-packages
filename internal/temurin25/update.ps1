@@ -12,6 +12,7 @@ function global:au_SearchReplace {
         ".\tools\chocolateyinstall.ps1" = @{
             "(?i)^(\s*url\s*=\s*)('.*')"      = "`$1'$($Latest.URL32)'"
             "(?i)^(\s*checksum\s*=\s*)('.*')" = "`$1'$($Latest.Checksum32)'"
+            "(?i)^(\s*file\s*=\s*)('.*')"     = "`$1'$($Latest.Filename)'"
         }
     }
 }
@@ -40,7 +41,8 @@ function global:au_GetLatest {
     # NuGet/choco's 4-segment limit even after it, which temurin17's
     # version format happened not to hit. Fail loudly here instead of
     # letting choco pack fail later with a more confusing error.
-    $version = $latest.Version -replace '\+', '.'
+    $fileName = $latest.URI -split '/' | Select-Object -Last 1
+    $version = ($latest.Version -replace '\-LTS', '' -split '\+')[0]
     if ($version -notmatch '^\d+(\.\d+){0,3}(-.+)?$') {
         throw "Sanitized version '$version' has more than 4 numeric segments (NuGet/choco's limit) — adjust this au_GetLatest's version handling for AdoptiumTemurin25's actual version format."
     }
@@ -50,6 +52,7 @@ function global:au_GetLatest {
         Version        = $version
         Checksum32     = $checksum
         ChecksumType32 = 'sha256'
+        Filename       = $fileName
     }
 }
 

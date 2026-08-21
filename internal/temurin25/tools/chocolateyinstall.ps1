@@ -7,8 +7,8 @@ $toolsPath = Split-Path $MyInvocation.MyCommand.Definition
 # package — do not fill them in by hand.
 $packageArgs = @{
   packageName    = 'temurin25'
-  fileType       = 'exe'                # adjust: exe / msi / msu
-  url            = ''
+  fileType       = 'msi'                # adjust: exe / msi / msu
+  file           = ''
   softwareName   = 'temurin25*'         # part of/whole software name, for uninstall registry lookup
   checksum       = ''
   checksumType   = 'sha256'
