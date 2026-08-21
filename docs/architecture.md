@@ -126,17 +126,22 @@ Every internalized, refreshed, or freshly built package passes through `scripts/
 
 ### 6.8 MCP Server & Agent-Driven Package Creation
 
-`mcp-server/` is a small Node.js server ([`@modelcontextprotocol/sdk`](https://github.com/modelcontextprotocol/typescript-sdk)) exposing five tools. Each is a thin wrapper around an existing script or a small, auditable git/file operation — no package-management logic is reimplemented in the server itself:
+`mcp-server/` is a small Node.js server ([`@modelcontextprotocol/sdk`](https://github.com/modelcontextprotocol/typescript-sdk)) exposing eight tools. Each is a thin wrapper around an existing script, a public API, or a small, auditable git/file operation — no package-management logic is reimplemented in the server itself:
 
 | Tool | Wraps | Write scope |
 |---|---|---|
 | `search_community_package` | `choco search --exact --limit-output` | none (read-only) |
 | `lint_package` | `scripts/lint-nuspec.ps1` | none (read-only) |
-| `scaffold_internal_package` | copies `internal/_template/`, fills in placeholders | local working tree only |
+| `search_evergreen_app` | [evergreen-api.stealthpuppy.com](https://eucpilots.com/evergreen/api/) `/apps` index | none (read-only) |
+| `get_evergreen_app_info` | evergreen-api `/app/{name}` | none (read-only) |
+| `search_silent_install_switch` | best-effort scrape of one [manageengine.com](https://www.manageengine.com/products/desktop-central/software-installation) catalog snapshot page — not exhaustive; a miss doesn't mean no switch exists | none (read-only) |
+| `scaffold_internal_package` | copies `internal/_template/`, fills in placeholders; given `evergreen_app_name`/`silent_args`, generates a real `au_GetLatest`/silent switch instead of a generic guess | local working tree only |
 | `bootstrap_internalize_package` | download → `scan-package.ps1` → push | **staging feed only** — refuses to run if `STAGING_FEED_URL`/`STAGING_API_KEY` aren't set, and never receives production credentials |
 | `open_pull_request` | `git`/`gh` | opens a PR against `main`; never merges |
 
-`.github/workflows/handle-package-request.yml` runs the agent (Claude Code, headless: `claude -p ... --mcp-config mcp-server/mcp-config.json --strict-mcp-config --allowedTools <exactly these 5 tools> --permission-mode bypassPermissions --output-format json`) against the issue body, and posts the agent's one-line result back as an issue comment. Two things worth calling out about how untrusted content is handled here: the issue body (and later, the agent's own response) are passed into the workflow via `env:` variables and referenced from the PowerShell script, never spliced directly into the `run:` block's script text — doing the latter is a real script-injection vector in GitHub Actions, since `${{ }}` expressions are substituted as literal text into the script *before* the shell parses it. `--strict-mcp-config` plus the explicit `--allowedTools` list also means the agent has no access to any tool beyond these five, regardless of what else might be configured on the runner.
+The two evergreen-api tools and `scaffold_internal_package`'s use of them were added after real testing on `temurin17` showed how much better a scaffolded AU package is when it starts from a real, working `au_GetLatest` instead of a CHANGE_ME placeholder. `search_silent_install_switch` was added for the same reason for `silentArgs`, with an explicit caveat baked into the tool's own description: ManageEngine has no search API, so this only scans one non-paginated catalog page — good enough to often help, not something to treat as authoritative when it comes up empty.
+
+`.github/workflows/handle-package-request.yml` runs the agent (Claude Code, headless: `claude -p ... --mcp-config mcp-server/mcp-config.json --strict-mcp-config --allowedTools <exactly these 8 tools> --permission-mode bypassPermissions --output-format json`) against the issue body, and posts the agent's one-line result back as an issue comment. Two things worth calling out about how untrusted content is handled here: the issue body (and later, the agent's own response) are passed into the workflow via `env:` variables and referenced from the PowerShell script, never spliced directly into the `run:` block's script text — doing the latter is a real script-injection vector in GitHub Actions, since `${{ }}` expressions are substituted as literal text into the script *before* the shell parses it. `--strict-mcp-config` plus the explicit `--allowedTools` list also means the agent has no access to any tool beyond these five, regardless of what else might be configured on the runner.
 
 ## 7. Package Lifecycle & State Machine
 

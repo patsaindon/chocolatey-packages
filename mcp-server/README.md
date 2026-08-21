@@ -13,7 +13,10 @@ file/git operation — no package-management logic is reimplemented here. See
 |---|---|---|
 | `search_community_package` | `choco search --exact --limit-output` | none (read-only) |
 | `lint_package` | `scripts/lint-nuspec.ps1` | none (read-only) |
-| `scaffold_internal_package` | copies `internal/_template/`, fills in placeholders | local working tree only |
+| `search_evergreen_app` | [evergreen-api.stealthpuppy.com](https://eucpilots.com/evergreen/api/) `/apps` index | none (read-only) |
+| `get_evergreen_app_info` | evergreen-api `/app/{name}` | none (read-only) |
+| `search_silent_install_switch` | [manageengine.com](https://www.manageengine.com/products/desktop-central/software-installation) catalog scrape — best-effort, one snapshot page, not exhaustive | none (read-only) |
+| `scaffold_internal_package` | copies `internal/_template/`, fills in placeholders; pass `evergreen_app_name`/`silent_args` (from the two tools above) to seed a real `au_GetLatest`/silent switch instead of a generic placeholder | local working tree only |
 | `bootstrap_internalize_package` | `choco download --internalize` → `scripts/scan-package.ps1` → `choco push` | **staging feed only** — requires `STAGING_FEED_URL`/`STAGING_API_KEY` in the server's environment; refuses to run without them, and never receives production credentials |
 | `open_pull_request` | `git`/`gh` | opens a PR against `main`; never merges |
 

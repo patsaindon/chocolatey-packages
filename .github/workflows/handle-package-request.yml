@@ -89,14 +89,27 @@ jobs:
             is nothing to open a PR for, since internalized packages have no
             tracked manifest file (see internalized/README.md).
 
-          - "Internal (AU-based ...)": call scaffold_internal_package with
-            the package_id/owner_team/source_url/notes from the form, then
+          - "Internal (AU-based ...)": before scaffolding, call
+            search_evergreen_app with the package name; if it finds a
+            confident match, note its exact 'name' field to pass as
+            scaffold_internal_package's evergreen_app_name (this makes
+            scaffold_internal_package generate a real, working
+            au_GetLatest instead of a generic placeholder). Also call
+            search_silent_install_switch with the package name — it's a
+            best-effort search of one snapshot page, so a miss doesn't
+            mean no switch exists — and if it finds a confident match,
+            pass its silentInstallSwitch value as scaffold_internal_
+            package's silent_args. Then call scaffold_internal_package
+            with the package_id/owner_team/source_url/notes from the form
+            plus whichever of evergreen_app_name/silent_args you found,
             call lint_package on the result to confirm it's structurally
             valid, then call open_pull_request with all the files scaffold_
             internal_package reported, a branch named
-            package-request/<package_id>, and a PR body that includes a
-            note that update.ps1's au_GetLatest still needs human review
-            before this package will actually update itself correctly.
+            package-request/<package_id>, and a PR body that says whether
+            au_GetLatest was seeded from real evergreen data or is still a
+            placeholder needing human research, either way noting it still
+            needs human review before this package is trusted to update
+            itself unattended.
 
           If anything fails (package not found, lint fails, tool error),
           stop and report the failure — do not retry with guessed values.
@@ -110,7 +123,7 @@ jobs:
           claude -p $prompt `
             --mcp-config mcp-server/mcp-config.json `
             --strict-mcp-config `
-            --allowedTools "mcp__chocolatey-packages__search_community_package mcp__chocolatey-packages__bootstrap_internalize_package mcp__chocolatey-packages__scaffold_internal_package mcp__chocolatey-packages__lint_package mcp__chocolatey-packages__open_pull_request" `
+            --allowedTools "mcp__chocolatey-packages__search_community_package mcp__chocolatey-packages__bootstrap_internalize_package mcp__chocolatey-packages__scaffold_internal_package mcp__chocolatey-packages__lint_package mcp__chocolatey-packages__open_pull_request mcp__chocolatey-packages__search_evergreen_app mcp__chocolatey-packages__get_evergreen_app_info mcp__chocolatey-packages__search_silent_install_switch" `
             --permission-mode bypassPermissions `
             --output-format json > agent_output.json
 

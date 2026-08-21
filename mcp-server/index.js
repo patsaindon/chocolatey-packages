@@ -7,6 +7,9 @@ import * as lintPackage from "./tools/lint-package.js";
 import * as scaffoldInternalPackage from "./tools/scaffold-internal-package.js";
 import * as bootstrapInternalizePackage from "./tools/bootstrap-internalize-package.js";
 import * as openPullRequest from "./tools/open-pull-request.js";
+import * as searchEvergreenApp from "./tools/search-evergreen-app.js";
+import * as getEvergreenAppInfo from "./tools/get-evergreen-app-info.js";
+import * as searchSilentInstallSwitch from "./tools/search-silent-install-switch.js";
 
 // Package-creation tools for the issue-triggered package request flow.
 // See docs/architecture.md and .github/workflows/handle-package-request.yml.
@@ -25,6 +28,9 @@ for (const tool of [
   scaffoldInternalPackage,
   bootstrapInternalizePackage,
   openPullRequest,
+  searchEvergreenApp,
+  getEvergreenAppInfo,
+  searchSilentInstallSwitch,
 ]) {
   server.registerTool(tool.name, tool.config, tool.handler);
 }
