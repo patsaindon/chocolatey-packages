@@ -1,8 +1,11 @@
 name: Internalize Community Package
-# See docs/architecture.md section 9.1 for the full workflow design.
-# scan-package.ps1 is implemented (Windows Defender + Grype); the push step
-# below targets a Nexus OSS nuget-format hosted repo (STAGING_FEED_URL, e.g.
-# https://nexus.corp.local/repository/choco-staging/).
+# One-time BOOTSTRAP of a package that isn't in the staging feed yet. Once
+# this first push lands, refresh-internalized-packages.yml (scheduled)
+# takes over keeping it up to date by diffing staging against the Community
+# Repository — see internalized/README.md and docs/architecture.md section
+# 9.1/9.2. scan-package.ps1 is implemented (Windows Defender + Grype); the
+# push step below targets a Nexus OSS nuget-format hosted repo
+# (STAGING_FEED_URL, e.g. https://nexus.corp.local/repository/choco-staging/).
 
 on:
   workflow_dispatch:

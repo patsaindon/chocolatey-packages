@@ -1,9 +1,0 @@
-# Template — copy this folder to internalized/<package-id>/ and fill in.
-packageId: CHANGE_ME
-pinnedVersion: "0.0.0"           # or "latest" to always re-check
-source: https://community.chocolatey.org/api/v2/
-internalizeOptions:
-  recursive: true                 # pull dependencies too (C4B feature)
-owner: CHANGE_ME                  # owning team, drives notification routing
-autoUpdateCheck: false            # set true to opt into scheduled-update-check.yml
-notes: ""

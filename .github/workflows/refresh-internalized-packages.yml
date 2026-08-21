@@ -1,0 +1,29 @@
+name: Refresh Internalized Packages
+# Keeps every already-onboarded internalized package up to date by diffing
+# the staging feed against the Chocolatey Community Repository directly —
+# no manifest file to maintain (see internalized/README.md). Onboarding a
+# brand-new package for the first time still goes through
+# internalize-community-package.yml; this workflow only refreshes packages
+# already present in staging. See docs/architecture.md section 9.2.
+
+on:
+  schedule:
+    - cron: "0 6 * * *"   # daily, 06:00
+  workflow_dispatch: {}
+
+jobs:
+  refresh:
+    runs-on: [self-hosted, windows, choco-internalize]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refresh outdated internalized packages
+        shell: pwsh
+        env:
+          STAGING_FEED_URL: ${{ secrets.STAGING_FEED_URL }}
+          STAGING_API_KEY: ${{ secrets.STAGING_API_KEY }}
+        run: |
+          ./scripts/Get-UpdatedPackage.ps1 -Verbose `
+            -LocalRepo $env:STAGING_FEED_URL `
+            -LocalRepoApiKey $env:STAGING_API_KEY `
+            -RemoteRepo "https://community.chocolatey.org/api/v2/"

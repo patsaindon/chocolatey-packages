@@ -2,25 +2,8 @@
 
 Packages sourced from the Chocolatey Community Repository and internalized so installers never depend on the public internet at deploy time.
 
-Each package lives in its own folder, named after its package ID, containing an `internalize.yml` manifest:
+There is no manifest file to maintain here — presence in the **staging feed** *is* the record of what's currently onboarded. Keeping already-onboarded packages up to date is handled by [scripts/Get-UpdatedPackage.ps1](../scripts/Get-UpdatedPackage.ps1), run on a schedule by [.github/workflows/refresh-internalized-packages.yml](../.github/workflows/refresh-internalized-packages.yml): it diffs every package currently in the staging feed against the Community Repository and re-internalizes anything with a newer remote version.
 
-```
-internalized/<package-id>/
-└── internalize.yml
-```
+Onboarding a package for the **first time** (nothing to diff against yet) still goes through [.github/workflows/internalize-community-package.yml](../.github/workflows/internalize-community-package.yml) (`workflow_dispatch`, or triggered by a package-request issue — see `docs/architecture.md`). Once that first push lands in staging, the scheduled refresh picks it up automatically going forward.
 
-Example:
-
-```yaml
-# internalized/7zip/internalize.yml
-packageId: 7zip
-pinnedVersion: "23.1.0"          # or "latest" to always re-check
-source: https://community.chocolatey.org/api/v2/
-internalizeOptions:
-  recursive: true                 # pull dependencies too (C4B feature)
-owner: platform-engineering
-autoUpdateCheck: true             # opt into the scheduled update-check workflow
-notes: "Approved for general use, no special restrictions"
-```
-
-Merging a new `internalize.yml` (or a version bump to an existing one) triggers `.github/workflows/internalize-community-package.yml`, which downloads, scans, smoke-tests, and pushes the result to the staging feed. See [docs/architecture.md](../docs/architecture.md) sections 6.1, 9.1, and 9.2 for the full design.
+This folder is kept only as a place for any package-specific notes that don't belong anywhere else (e.g. why a package was internalized, known caveats) — nothing under it is read by the workflows.

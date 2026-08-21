@@ -1,45 +1,34 @@
 name: Promote to Production
-# See docs/architecture.md section 9.4. Promotes the exact .nupkg already in
-# staging (by content hash) — this workflow must never rebuild the package.
-# Implemented against Nexus Repository OSS (scripts/promote-package.ps1).
+# See docs/architecture.md section 9.4. Sweeps every package/version present
+# in staging but not yet in production, re-scans it (AV + Grype, inside
+# Update-ProdRepoFromTest.ps1), and pushes it on to the production feed.
+# Gated by the production-feed Environment's required reviewers below —
+# that approval, not anything in the script, is what keeps this from being
+# an unattended auto-promote.
 
 on:
-  workflow_dispatch:
-    inputs:
-      package_id:
-        description: "Package ID to promote"
-        required: true
-      version:
-        description: "Version to promote"
-        required: true
-
-env:
-  # Hosted repo names as provisioned in Nexus — override here if yours differ
-  # from the docs/architecture.md section 8 naming convention.
-  STAGING_REPO_NAME: choco-staging
-  PRODUCTION_REPO_NAME: choco-prod
+  schedule:
+    - cron: "0 8 * * *"   # daily, 08:00 — still requires environment approval
+  workflow_dispatch: {}
 
 jobs:
   promote:
     runs-on: [self-hosted, windows]
-    environment: production-feed   # configure required reviewers on this Environment
+    environment: production-feed   # required reviewers configured here
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copy package by content hash from staging to production
+      - name: Promote outdated packages from staging to production
         shell: pwsh
         env:
-          NEXUS_BASE_URL: ${{ secrets.NEXUS_BASE_URL }}
-          NEXUS_READ_USER: ${{ secrets.NEXUS_READ_USER }}
-          NEXUS_READ_PASSWORD: ${{ secrets.NEXUS_READ_PASSWORD }}
-          # Scoped to the production repo only — never available to the
-          # internalize/publish-internal workflows. See docs/architecture.md
+          STAGING_FEED_URL: ${{ secrets.STAGING_FEED_URL }}
+          PRODUCTION_FEED_URL: ${{ secrets.PRODUCTION_FEED_URL }}
+          # Scoped to this workflow only — never available to the
+          # internalize/refresh/publish workflows. See docs/architecture.md
           # section 6.6 / 12.
           PRODUCTION_API_KEY: ${{ secrets.PRODUCTION_API_KEY }}
         run: |
-          ./scripts/promote-package.ps1 `
-            -PackageId ${{ github.event.inputs.package_id }} `
-            -Version ${{ github.event.inputs.version }} `
-            -NexusBaseUrl $env:NEXUS_BASE_URL `
-            -SourceRepo $env:STAGING_REPO_NAME `
-            -TargetRepo $env:PRODUCTION_REPO_NAME
+          ./scripts/Update-ProdRepoFromTest.ps1 -Verbose `
+            -TestRepo $env:STAGING_FEED_URL `
+            -ProdRepo $env:PRODUCTION_FEED_URL `
+            -ProdRepoApiKey $env:PRODUCTION_API_KEY
