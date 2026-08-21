@@ -18,6 +18,25 @@ export const config = {
   },
 };
 
+/**
+ * Ensures a git identity is configured before committing. Found by testing:
+ * a real agent run failed here with "Author identity unknown" on a runner
+ * that had never had git user.name/user.email set — and the agent
+ * correctly refused to guess one itself. Uses --local so this never
+ * touches the runner's global git config, and only sets what's missing
+ * (never overrides a deliberately configured identity).
+ */
+async function ensureGitIdentity() {
+  const email = await run("git", ["config", "--local", "user.email"]);
+  if (email.code !== 0 || !email.stdout.trim()) {
+    await run("git", ["config", "--local", "user.email", "github-actions[bot]@users.noreply.github.com"]);
+  }
+  const name = await run("git", ["config", "--local", "user.name"]);
+  if (name.code !== 0 || !name.stdout.trim()) {
+    await run("git", ["config", "--local", "user.name", "github-actions[bot]"]);
+  }
+}
+
 export async function handler({ branch, title, body, files, base }) {
   if (!process.env.GH_TOKEN && !process.env.GITHUB_TOKEN) {
     return textResult("GH_TOKEN (or GITHUB_TOKEN) is not set — cannot authenticate gh.", true);
@@ -25,6 +44,8 @@ export async function handler({ branch, title, body, files, base }) {
   if (files.length === 0) {
     return textResult("No files given to commit.", true);
   }
+
+  await ensureGitIdentity();
 
   const steps = [
     ["git", ["checkout", "-b", branch]],
