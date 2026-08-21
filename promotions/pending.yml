@@ -5,5 +5,5 @@
 # approval gate for production promotion -- see docs/architecture.md
 # section 9.4. One entry per line, "name|version" (same format as
 # `choco search --limit-output` / ConvertTo-ChocoObject.ps1 already use
-# elsewhere in this repo). Empty until the next propose run finds
-# something newer in staging than production.
+# elsewhere in this repo).
+test-thin-pkg2|1.0.0
