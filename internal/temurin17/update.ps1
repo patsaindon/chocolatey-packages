@@ -10,8 +10,8 @@ import-module au
 function global:au_SearchReplace {
     @{
         ".\tools\chocolateyinstall.ps1" = @{
-            "(?i)^(\s*url\s*=\s*)('.*')"      = "`$1'$($Latest.URL32)'"
-            "(?i)^(\s*checksum\s*=\s*)('.*')" = "`$1'$($Latest.Checksum32)'"
+            "(?i)^(\s*checksum\s*=\s*)('.*')" = "`$1'$($Latest.Checksum)'"
+            "(?i)^(\s*file\s*=\s*)('.*')" = "`$1'$($Latest.FileName)'"
         }
     }
 }
@@ -21,14 +21,19 @@ function global:au_GetLatest {
     # releases (an internal file share, artifact repo, or vendor page) and
     # return at least URL32 + Version. See the AU README's "Public interface"
     # section: https://github.com/majkinetor/AU#public-interface
-    $releases = 'https://github.com/adoptium/temurin17-binaries/releases/latest'
-    $page = Invoke-WebRequest -Uri $releases -UseBasicParsing
+    $releases = "https://evergreen-api.stealthpuppy.com/app/AdoptiumTemurin17"
+    $page = Invoke-RestMethod -Uri $releases -UserAgent "company/location"
+    $latest = $page | Where-Object { $_.Architecture -eq "x64" -and $_.Type -eq "msi" -and $_.ImageType -eq "jdk" }
 
-    $re  = 'temurin17-(?<version>[\d.]+)\.exe'
-    $url = $page.Links | Where-Object href -match $re | Select-Object -First 1 -ExpandProperty href
-    $version = ($url -split '-' | Select-Object -Last 1) -replace '\.exe$'
+    $url = $latest.Links | Where-Object href -match 'temurin17-(?<version>[\d.]+)\.exe' | Select-Object -First 1 -ExpandProperty href
+    $version = ($latest.Version -replace '\+', '.')
 
-    return @{ URL32 = $url; Version = $version }
+    return @{ URL = $latest.URI; 
+              Version = $version;
+              Checksum = $latest.Checksum;
+              FileType = "msi";
+              FileName = "OpenJDK17U-jdk_x64_windows_hotspot_${version}.msi"
+            }
 }
 
 update -ChecksumFor none
