@@ -6,4 +6,3 @@
 # section 9.4. One entry per line, "name|version" (same format as
 # `choco search --limit-output` / ConvertTo-ChocoObject.ps1 already use
 # elsewhere in this repo).
-test-thin-pkg2|1.0.0
