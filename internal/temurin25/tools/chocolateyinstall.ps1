@@ -12,7 +12,7 @@ $packageArgs = @{
   softwareName   = 'temurin25*'         # part of/whole software name, for uninstall registry lookup
   checksum       = ''
   checksumType   = 'sha256'
-  silentArgs     = '/S'                 # adjust for this installer's actual silent-install flag
+  silentArgs     = '/qn /norestart'        # adjust for this installer's actual silent-install flag
   validExitCodes = @(0)
 }
 
