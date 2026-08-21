@@ -330,10 +330,10 @@ What's still only validated against BaGetter, not literal Nexus: anything Nexus-
 
 1. Swap the BaGetter stand-in feed secrets for the actual Nexus `choco-staging` / `choco-prod` hosted repos once provisioned — expected to be a drop-in URL swap, since nothing here is Nexus-specific.
 2. Exercise `propose-package-promotion.yml` → merge → `promote-approved-packages.yml` end-to-end against the BaGetter stand-in at least once, the same way the rest of the pipeline already has been (Section 9.4's PR gate hasn't had a real run yet, only the diff/promote logic it's built on).
-3. Merge (after verifying `au_GetLatest` against the real Adoptium page) the `temurin17` PR the agent flow produced, then let `update-internal-packages.yml`/`test-internal-packages.yml` run against a real, non-template internal package for the first time.
+3. **Done:** the `temurin17` PR (#4) merged and its `au_GetLatest` was verified against the real Adoptium page. Still open from this item: let `update-internal-packages.yml`/`test-internal-packages.yml` actually run against it (and `temurin25`, PR #6, still open) on a real schedule, not just at PR time.
 4. Point a pilot group of CCM-managed endpoints at the production feed.
 5. Close the gaps flagged above: periodic re-scan of stationary production packages (Section 9.5), ephemeral runner automation (Section 6.6) — the python3/python314 incident above is a concrete case for it, splitting the runner pool for network segmentation (Section 6.6), and — if it turns out to matter — some form of ownership tracking for internalized packages (Section 11).
-7. Build the deferred dashboard views (Section 10) once the pipeline has real usage to inform what's actually useful there.
+6. Build the deferred dashboard views (Section 10) once the pipeline has real usage to inform what's actually useful there.
 
 ## 15. Open Decisions Needed From Your Team
 
