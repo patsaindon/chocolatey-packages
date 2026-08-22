@@ -1,6 +1,13 @@
 import { z } from "zod";
 import { textResult } from "../lib/exec.js";
-import { searchWinget, getLatestWingetVersion, wingetManifestPath, listWingetManifestFiles, fetchWingetFile } from "../lib/winget.js";
+import {
+  searchWinget,
+  getLatestWingetVersion,
+  wingetManifestPath,
+  listWingetManifestFiles,
+  fetchWingetFile,
+  WINGET_ID_PATTERN,
+} from "../lib/winget.js";
 
 export const name = "get_winget_package_manifest";
 
@@ -12,8 +19,6 @@ export const config = {
     query: z.string().describe("An exact winget package id ('7zip.7zip') or a search term ('7-Zip', 'Visual Studio Code') to resolve one from"),
   },
 };
-
-const WINGET_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9.\-]*\.[A-Za-z0-9][A-Za-z0-9.\-]*$/;
 
 export async function handler({ query }) {
   let id = query;

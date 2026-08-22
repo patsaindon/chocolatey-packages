@@ -3,6 +3,17 @@ import { run } from "./exec.js";
 const USER_AGENT = "chocolatey-packages-mcp-server/1.0 (+https://github.com/patsaindon/chocolatey-packages)";
 const WINGET_PKGS_API = "https://api.github.com/repos/microsoft/winget-pkgs";
 
+// A winget id is Publisher.Package(.More), at least one dot -- but real
+// ids aren't limited to letters/digits/dot/hyphen the way a first version
+// of this pattern assumed: found by testing a real package (Notepad++'s
+// own id is literally 'Notepad++.Notepad++') that a plain `+` sign is a
+// real, unremarkable character in a real id, not an edge case. Exported
+// so both this file's own row-validation and the tool's "does this query
+// already look like an exact id" check use the same definition instead of
+// two copies quietly drifting apart, which is exactly how this bug
+// happened the first time.
+export const WINGET_ID_PATTERN = /^[\w+-]+(\.[\w+-]+)+$/;
+
 function githubHeaders() {
   const headers = { "User-Agent": USER_AGENT };
   const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
@@ -33,10 +44,9 @@ export async function searchWinget(term) {
     const cells = line.trim().split(/\s{2,}/);
     if (cells.length < 3) continue;
     const [name, id, version] = cells;
-    // A winget id is always Publisher.Package (at least one dot) -- used
-    // here to distinguish the id cell from the name/version/match cells
+    // Used to distinguish the id cell from the name/version/match cells
     // without relying on column position, in case a locale reorders them.
-    if (!/^[A-Za-z0-9][A-Za-z0-9.\-]*\.[A-Za-z0-9][A-Za-z0-9.\-]*$/.test(id)) continue;
+    if (!WINGET_ID_PATTERN.test(id)) continue;
     rows.push({ name, id, version });
   }
   return rows;
