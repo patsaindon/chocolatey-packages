@@ -157,6 +157,29 @@ GitHub's own `/search/repositories` API. No scraping: GitHub's Trending
 page has no official API at all, and an unofficial one would be one more
 thing to trust.
 
+**The whole window is swept one week at a time, not one giant query.**
+An earlier version ran a single `created:>{12 months ago} stars:>300`
+query and paged through it with an advancing page cursor — confirmed by
+real testing to be a dead end: GitHub's Search API hard-caps every query
+at 1000 *reachable* results no matter how many pages you ask for, and
+that query's own `total_count` was 10,900. Sorted by stars descending,
+paging only ever walks the same top ~1,000 highest-starred repos in the
+whole year, forever — the other ~9,900 are structurally unreachable.
+Lowering `-MinStars` doesn't help either (retested at 100/50/20 stars:
+`total_count` only grows, to 29,669/53,763/115,001) since the same top
+repos still dominate every page. Monthly slicing was tried next and also
+rejected by real testing: several individual months' own `total_count`
+still exceeded 1000 (older months have had more time to accumulate stars
+— one sampled month hit 2,571). Weekly slicing was tested the same way
+across the full year (samples: 103, 159, 447, 308, 175, 171) and stayed
+comfortably under the cap everywhere sampled, so a single call per week
+now reaches *every* matching repo created in it, not just the loudest
+ones. The cursor (`packaging-opportunities-cursor.txt`) now tracks a
+week index instead of a page number, advancing one week per run and
+wrapping back to the most recent week after a full pass over the
+`-CreatedWithinMonths` window (~53 runs at the daily cadence, roughly
+two months to fully cycle once).
+
 A repo having stars doesn't mean it ships anything installable on
 Windows, though — confirmed by testing that a looser check (does any
 release asset's name contain `win`) is actively misleading: a Node
@@ -170,11 +193,18 @@ elsewhere in this repo) — a real installer with no Community match is a
 genuine candidate for `scaffold_internal_package`, using the repo's own
 name directly.
 
-A first real test batch (the top 15 repos by star count) found zero real
-candidates — sorting by raw popularity surfaces viral, non-installable
-content (agent frameworks, "awesome" lists, skill collections) well
-before genuine desktop software. That's expected, not a bug: the same
-batched, cursor-advancing design as the other two scripts here means
-repeated runs keep working through GitHub's real result set over time,
-the same way finding a stale package took patience rather than one
-lucky first batch.
+A first real test batch (the top 15 repos by star count, under the
+original all-time-top design above) found zero real candidates —
+sorting by raw popularity surfaces viral, non-installable content (agent
+frameworks, "awesome" lists, skill collections) well before genuine
+desktop software. That's expected, not a bug: the same batched,
+cursor-advancing design as the other two scripts here means repeated
+runs keep working through GitHub's real result set over time, the same
+way finding a stale package took patience rather than one lucky first
+batch. Once the cursor was switched to sweep week by week instead,
+though, a real candidate turned up in the very next test run:
+`LaoFeng-mouse/flyingmouse-format`, a real Windows installer
+(`FlyingMouse-Format-Setup-0.6.4-x64.exe`) with no existing Chocolatey
+package — exactly the genuine signal that all-time top-1000 paging could
+never have reached, since a two-week-old repo can't yet have out-starred
+the whole year's biggest viral hits.
