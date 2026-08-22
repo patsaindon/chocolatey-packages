@@ -58,12 +58,20 @@ $options = [ordered]@{
         }
     }
 
-    Gist = @{
-        Id     = $Env:gist_id_test                          #Your gist id; leave empty for new private or anonymous gist
-        ApiKey = $Env:github_api_key                        #Your github api key - if empty anoymous gist is created
-        Path   = "$PSScriptRoot\Update-Force-Test-${n}.md"  #List of files to add to the gist
-        Description = "Update Force Test Report #powershell #chocolatey"
-    }
+    # Same conditional-inclusion pattern as update_all.ps1: AU runs a
+    # plugin whenever its option key is present at all, even with blank
+    # values inside -- with no github_api_key configured, anonymous Gist
+    # creation gets a 401 ("Requires authentication") on every single PR
+    # run rather than being skipped. Not used anywhere in this pipeline
+    # (no Gist-based reporting), so only load it if actually configured.
+    Gist = if ($Env:github_api_key) {
+            @{
+                Id          = $Env:gist_id_test              #Your gist id; leave empty for new private gist
+                ApiKey      = $Env:github_api_key             #Your github api key
+                Path        = "$PSScriptRoot\Update-Force-Test-${n}.md"  #List of files to add to the gist
+                Description = "Update Force Test Report #powershell #chocolatey"
+            }
+          } else {}
 }
 
 

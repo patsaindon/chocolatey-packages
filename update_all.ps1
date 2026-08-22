@@ -55,11 +55,25 @@ $Options = [ordered]@{
         Path = "$PSScriptRoot\Update-History.md"            #Path where to save history
     }
 
-    Gist = @{
-        Id     = $Env:gist_id                               #Your gist id; leave empty for new private or anonymous gist
-        ApiKey = $Env:github_api_key                        #Your github api key - if empty anoymous gist is created
-        Path   = "$PSScriptRoot\Update-AUPackages.md", "$PSScriptRoot\Update-History.md"       #List of files to add to the gist
-    }
+    # AU runs a plugin whenever its option key is present at all, regardless
+    # of whether the values inside are blank -- found by testing (real
+    # run against temurin17): with no github_api_key configured, AU still
+    # tried anonymous Gist creation and got a 401 ("Requires
+    # authentication"), and RunInfo unconditionally failed with "
+    # BinaryFormatter serialization and deserialization have been
+    # removed" (a .NET/PowerShell 7 incompatibility, not a config gap --
+    # no environment variable fixes it). Neither is used anywhere in this
+    # pipeline (no Gist-based reporting, nothing reads update_info.xml),
+    # so both follow the same conditional-inclusion pattern already used
+    # below for Mail: only load if actually configured, otherwise a
+    # harmless no-op error on every run.
+    Gist = if ($Env:github_api_key) {
+            @{
+                Id     = $Env:gist_id                        #Your gist id; leave empty for new private gist
+                ApiKey = $Env:github_api_key                 #Your github api key
+                Path   = "$PSScriptRoot\Update-AUPackages.md", "$PSScriptRoot\Update-History.md"       #List of files to add to the gist
+            }
+          } else {}
 
     Git = @{
         User     = ''                                       #Git username, leave empty if github api key is used
@@ -69,11 +83,6 @@ $Options = [ordered]@{
     GitReleases  = @{
         ApiToken    = $Env:github_api_key                   #Your github api key
         ReleaseType = 'package'                             #Either 1 release per date, or 1 release per package
-    }
-
-    RunInfo = @{
-        Exclude = 'password', 'apikey', 'apitoken'          #Option keys which contain those words will be removed
-        Path    = "$PSScriptRoot\update_info.xml"           #Path where to save the run info
     }
 
     Mail = if ($Env:mail_user) {
