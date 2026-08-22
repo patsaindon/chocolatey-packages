@@ -13,6 +13,7 @@ import * as searchSilentInstallSwitch from "./tools/search-silent-install-switch
 import * as lookupPackageKnowledge from "./tools/lookup-package-knowledge.js";
 import * as writePackageKnowledge from "./tools/write-package-knowledge.js";
 import * as getCommunityPackageTools from "./tools/get-community-package-tools.js";
+import * as getWingetPackageManifest from "./tools/get-winget-package-manifest.js";
 
 // Package-creation tools for the issue-triggered package request flow.
 // See docs/architecture.md and .github/workflows/handle-package-request.yml.
@@ -37,6 +38,7 @@ for (const tool of [
   lookupPackageKnowledge,
   writePackageKnowledge,
   getCommunityPackageTools,
+  getWingetPackageManifest,
 ]) {
   server.registerTool(tool.name, tool.config, tool.handler);
 }

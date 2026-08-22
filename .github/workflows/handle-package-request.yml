@@ -6,7 +6,10 @@ name: Handle Package Request
 # production, never merging its own PR. See docs/architecture.md.
 #
 # Runner prerequisites beyond the existing choco/git/gh/grype ones: Node.js
-# (verified against v26 here) and the `claude` CLI, both on PATH.
+# (verified against v26 here), the `claude` CLI, and `winget` (used by
+# get_winget_package_manifest to resolve a package name/id and its latest
+# version — confirmed already present on this runner, ships with modern
+# Windows), all on PATH.
 
 on:
   issues:
@@ -103,20 +106,35 @@ jobs:
             scaffold_internal_package generate a real, working
             au_GetLatest instead of a generic placeholder). For whichever
             of silent_args/source_url the knowledge lookup didn't already
-            have: call get_community_package_tools with the package id
-            (and, if that finds nothing and the id doesn't already end in
-            '.install', you don't need to retry it yourself — it already
-            tries that variant automatically) — many packages you're
-            asked to make an internal AU version of (to track the vendor
-            directly instead of lagging behind Community's own release
-            cadence) already have a real, working chocolateyInstall.ps1
-            on Community, and its own detectedSilentArgs field is usually
-            a better source for silentArgs than a guess (it's a regex
-            over a real script, not a guarantee — sanity-check it against
-            the returned file text before trusting it). Only if that
-            finds nothing, fall back to search_silent_install_switch with
-            the package name — it's a best-effort search of one snapshot
-            page, so a miss doesn't mean no switch exists. Then call
+            have, try these in order and stop at the first confident hit
+            — each is progressively less structured than the last:
+
+            1. get_winget_package_manifest with the package name (or the
+               exact winget id if you already know it) — Microsoft's own
+               winget-pkgs gives a real InstallerSwitches.Silent value
+               plus a real InstallerUrl/SHA256 straight from structured
+               YAML, not a scrape. Multiple matches are reported as
+               genuinely ambiguous, not guessed at — pass the exact id
+               from the list back in if that happens and you can tell
+               which one is right.
+            2. get_community_package_tools with the package id (and, if
+               that finds nothing and the id doesn't already end in
+               '.install', you don't need to retry it yourself — it
+               already tries that variant automatically) — many packages
+               you're asked to make an internal AU version of (to track
+               the vendor directly instead of lagging behind Community's
+               own release cadence) already have a real, working
+               chocolateyInstall.ps1 on Community, and its own
+               detectedSilentArgs field is a reasonable source for
+               silentArgs (it's a regex over a real script, not a
+               guarantee — sanity-check it against the returned file text
+               before trusting it).
+            3. Only if both of those find nothing, fall back to
+               search_silent_install_switch with the package name — it's
+               a best-effort search of one snapshot page, so a miss
+               doesn't mean no switch exists.
+
+            Then call
             scaffold_internal_package with the package_id/owner_team/
             source_url/notes from the form, the vendor slug, plus
             whichever of evergreen_app_name/silent_args you found
@@ -129,8 +147,9 @@ jobs:
             confirm it's structurally valid. If you found a real
             silent_args or source_url this run that lookup_package_
             knowledge didn't already have for this vendor (whether from
-            get_community_package_tools, search_silent_install_switch, or
-            your own reading of a script), call write_package_knowledge
+            get_winget_package_manifest, get_community_package_tools,
+            search_silent_install_switch, or your own reading of a
+            script), call write_package_knowledge
             with the same vendor slug to record it — don't let a value
             you had to search for die with this one package when the next
             one from the same vendor could just reuse it. Also record any
@@ -162,7 +181,7 @@ jobs:
           claude -p $prompt `
             --mcp-config mcp-server/mcp-config.json `
             --strict-mcp-config `
-            --allowedTools "mcp__chocolatey-packages__search_community_package mcp__chocolatey-packages__bootstrap_internalize_package mcp__chocolatey-packages__scaffold_internal_package mcp__chocolatey-packages__lint_package mcp__chocolatey-packages__open_pull_request mcp__chocolatey-packages__search_evergreen_app mcp__chocolatey-packages__get_evergreen_app_info mcp__chocolatey-packages__search_silent_install_switch mcp__chocolatey-packages__lookup_package_knowledge mcp__chocolatey-packages__write_package_knowledge mcp__chocolatey-packages__get_community_package_tools" `
+            --allowedTools "mcp__chocolatey-packages__search_community_package mcp__chocolatey-packages__bootstrap_internalize_package mcp__chocolatey-packages__scaffold_internal_package mcp__chocolatey-packages__lint_package mcp__chocolatey-packages__open_pull_request mcp__chocolatey-packages__search_evergreen_app mcp__chocolatey-packages__get_evergreen_app_info mcp__chocolatey-packages__search_silent_install_switch mcp__chocolatey-packages__lookup_package_knowledge mcp__chocolatey-packages__write_package_knowledge mcp__chocolatey-packages__get_community_package_tools mcp__chocolatey-packages__get_winget_package_manifest" `
             --permission-mode bypassPermissions `
             --output-format json > agent_output.json
 
