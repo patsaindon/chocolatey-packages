@@ -71,6 +71,37 @@ Import-Csv prospecting/community-version-reference.csv |
     Where-Object { $_.VersionMismatch -eq 'True' -or [int]$_.StaleDays -gt 180 }
 ```
 
+## A second, broader (and weaker-signal) reference
+
+`Update-CommunityVersionReference.ps1` only covers evergreen-api's ~565
+known apps -- a curated, but small, slice of the ~11,654 unique packages
+on the Community Repository (confirmed via
+[community.chocolatey.org/stats](https://community.chocolatey.org/stats)'
+`UniquePackages` field). `scripts/Update-CommunityStalenessReference.ps1`
+sweeps the *entire* catalog instead, using only each package's own
+`Published` date (`choco info`) -- no evergreen cross-reference, so no
+confirmed real-version comparison either. A flagged row here (`StaleDays`
+past the threshold) means "hasn't been touched in a while", not
+"confirmed behind the real vendor version" the way `VersionMismatch` in
+the other reference does -- some software genuinely hasn't changed in
+years. Treat it as a lead worth a manual look, or a match against
+`community-version-reference.csv` if the same software happens to be
+evergreen-tracked, not a ready-made candidate.
+
+It advances by a simple page cursor (`community-staleness-cursor.txt`)
+through `choco search --page=N --order-by=Id` rather than a
+never-checked-first sort like the evergreen reference uses: confirmed by
+testing that `--page` is 0-indexed and hands off cleanly between pages
+under the default (Id) ordering, so a plain advancing cursor sweeps the
+whole catalog reliably over many small runs, wrapping back to page 0
+once it reaches the end to keep refreshing indefinitely. (`choco search
+--order-by="LastPublished"` looked promising for this at first, but choco
+itself warns that ordering is applied client-side per page only --
+useless for a true global sort across a paged catalog this size, so
+`Update-CommunityStalenessReference.ps1` sorts within its own reference
+itself, using each page's `Published` date it looks up via `choco info`
+one package at a time.)
+
 ## Drafting an update for a stale package's own maintainer
 
 `scripts/Draft-CommunityPackageUpdate.ps1 -CommunityPackageId <id>` fetches

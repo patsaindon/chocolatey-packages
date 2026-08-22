@@ -1,0 +1,54 @@
+name: Prospect Community Staleness
+# Complements prospect-community-versions.yml (Section 6.9): that one
+# compares evergreen-api's ~565 known apps against a real current
+# version, giving a confirmed version-mismatch signal but only for that
+# curated universe. This one sweeps the *entire* Community Repository
+# (~11,654 unique packages, confirmed via community.chocolatey.org/stats'
+# UniquePackages field) by its own Published date alone -- much broader
+# coverage, but a weaker signal: an old Published date doesn't confirm
+# the package is actually behind a real vendor version, only that it
+# hasn't been touched in a while. Treat a flagged entry here as a lead
+# worth a manual look (or a cross-reference against
+# prospecting/community-version-reference.csv, if evergreen happens to
+# track the same software), not a confirmed candidate the way a
+# VersionMismatch from the other reference is.
+#
+# Never touches internal/, staging, or production -- this only ever
+# reads external, public APIs and writes its own CSV + page cursor.
+
+on:
+  schedule:
+    - cron: "30 * * * *"   # hourly (offset from prospect-community-versions.yml's :00 so they don't both start at once)
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: "Approximate minimum packages to check this run (rounded up to a full page)"
+        required: false
+        default: "100"
+
+permissions:
+  contents: write   # commits the updated reference CSV + cursor
+
+jobs:
+  prospect:
+    runs-on: [self-hosted, windows, choco-internalize]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sweep the next batch of the Community Repository
+        shell: pwsh
+        env:
+          BATCH_SIZE: ${{ github.event.inputs.batch_size || '100' }}
+        run: |
+          ./scripts/Update-CommunityStalenessReference.ps1 -Verbose -BatchSize ([int]$env:BATCH_SIZE)
+
+          git diff --quiet -- prospecting/community-staleness-reference.csv prospecting/community-staleness-cursor.txt
+          if ($LASTEXITCODE -ne 0) {
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git add prospecting/community-staleness-reference.csv prospecting/community-staleness-cursor.txt
+            git commit -m "Update community staleness reference"
+            git push origin main
+          } else {
+            Write-Host "No change this run."
+          }
