@@ -1,0 +1,57 @@
+name: Prospect Packaging Opportunities
+# The opposite discovery direction from prospect-community-versions.yml
+# and prospect-community-staleness.yml (Section 6.9): those start from a
+# package that already exists and ask whether it's stale. This one starts
+# from GitHub's real activity (repos created in the last 12 months with
+# 300+ stars -- a concrete, reproducible "gaining popularity" query, not
+# a vague notion) and asks whether Chocolatey has ever heard of it. A
+# repo having stars doesn't mean it ships anything Windows-installable at
+# all -- only a real '.exe'/'.msi' release asset counts, confirmed by
+# testing that a looser check (matching 'win' anywhere in an asset name)
+# is actively misleading.
+#
+# Never touches internal/, staging, or production -- this only ever
+# reads external, public APIs (GitHub's, Community's) and writes its own
+# CSV + page cursor. Daily, not hourly like the other two: genuinely new
+# trending software doesn't change meaningfully hour to hour, and a first
+# real test batch (top 15 by star count) found zero real candidates --
+# sorting by raw popularity surfaces viral non-software repos first, so
+# finding genuine signal here takes many cycles, not urgency.
+
+on:
+  schedule:
+    - cron: "0 7 * * *"   # daily, 07:00
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: "How many GitHub repos to check this run"
+        required: false
+        default: "20"
+
+permissions:
+  contents: write   # commits the updated reference CSV + cursor
+
+jobs:
+  prospect:
+    runs-on: [self-hosted, windows, choco-internalize]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the next batch of trending repos for packaging gaps
+        shell: pwsh
+        env:
+          BATCH_SIZE: ${{ github.event.inputs.batch_size || '20' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./scripts/Find-PackagingOpportunities.ps1 -Verbose -BatchSize ([int]$env:BATCH_SIZE)
+
+          git diff --quiet -- prospecting/packaging-opportunities-reference.csv prospecting/packaging-opportunities-cursor.txt
+          if ($LASTEXITCODE -ne 0) {
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git add prospecting/packaging-opportunities-reference.csv prospecting/packaging-opportunities-cursor.txt
+            git commit -m "Update packaging opportunities reference"
+            git push origin main
+          } else {
+            Write-Host "No change this run."
+          }

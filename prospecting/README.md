@@ -141,3 +141,40 @@ by real, correct data this script already looked up), tests it locally,
 and opens the PR themselves. `prospecting/drafts/` is gitignored — it's
 someone else's files plus a proposed edit, staged for review, never
 something that belongs committed to this repo.
+
+## The other discovery direction: what has no Chocolatey package at all
+
+Everything above starts from a package that already exists and asks
+whether it's stale. `scripts/Find-PackagingOpportunities.ps1`
+(`.github/workflows/prospect-packaging-opportunities.yml`, daily) starts
+from the opposite end: real open-source activity on GitHub, and asks
+whether Chocolatey has ever heard of it.
+
+"Gaining popularity" is a concrete, reproducible query, not a vague
+notion — repos created within the last `-CreatedWithinMonths` (default
+12), with more than `-MinStars` (default 300) stars, straight from
+GitHub's own `/search/repositories` API. No scraping: GitHub's Trending
+page has no official API at all, and an unofficial one would be one more
+thing to trust.
+
+A repo having stars doesn't mean it ships anything installable on
+Windows, though — confirmed by testing that a looser check (does any
+release asset's name contain `win`) is actively misleading: a Node
+native-module repo's `win32-x64-msvc.node` file matched that but isn't a
+standalone installer at all, while a real desktop app's actual installers
+matched a strict `.exe`/`.msi` extension check correctly. Only that
+strict check counts as "ships a real Windows installer" here. Survivors
+get checked against Community (`choco search --exact`, the same
+"only trust an exact match" principle used for evergreen/winget matching
+elsewhere in this repo) — a real installer with no Community match is a
+genuine candidate for `scaffold_internal_package`, using the repo's own
+name directly.
+
+A first real test batch (the top 15 repos by star count) found zero real
+candidates — sorting by raw popularity surfaces viral, non-installable
+content (agent frameworks, "awesome" lists, skill collections) well
+before genuine desktop software. That's expected, not a bug: the same
+batched, cursor-advancing design as the other two scripts here means
+repeated runs keep working through GitHub's real result set over time,
+the same way finding a stale package took patience rather than one
+lucky first batch.
