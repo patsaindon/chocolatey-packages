@@ -17,6 +17,7 @@ Repository package and records:
 | `Published` | The Community package's own `Published` date (`choco info`) |
 | `VersionMismatch` | `True` if `CommunityVersion` doesn't match `EvergreenVersion` (after stripping build-metadata suffixes) |
 | `StaleDays` | Days since `Published` |
+| `AmbiguousMatch` | `True` if this row's `CommunityPackageId` is also claimed by another app with a different real version — see below |
 | `LastChecked` | When this row was last refreshed |
 
 **Why this exists:** an internal AU package is usually made *because* a
@@ -51,6 +52,24 @@ reported separately, and just means there's nothing on Community to
 compare against for that app (which is itself useful: it means
 `scaffold_internal_package` is the *only* path for that software, not a
 choice between two).
+
+Even an exact match can still be wrong, though, when the exact term
+tried is a generic single word shared by several unrelated apps — found
+by testing against real data: `OBS Studio`, `Microsoft Visual Studio
+Code`, `Microsoft Visual Studio`, and three separate SSMS entries all
+exact-matched the same `studio` package, which `choco info` shows is
+actually an unrelated "Studio 2.0" — none of them. Every run
+recomputes, across the *whole* reference (not just that run's batch,
+since two colliding entries can easily land in different batches run
+days apart), whether a `CommunityPackageId` is claimed by more than one
+app that disagrees about the real version — genuinely the same software
+wouldn't disagree about its own current version, so disagreement is
+proof of a bad match on at least one side, not something to resolve by
+picking a winner. Rows like this get `AmbiguousMatch = True` and are
+excluded from the candidate list until sorted out by hand; a first pass
+over real, already-collected data found 34 such rows across 12 distinct
+collisions (`GitHub`, `PowerShell`, `openjdk`, `mysql`, `grafana`,
+`fiddler`, `zoom`, `Opera`, `treesize`, and `studio` among them).
 
 **This never writes to `internal/` or any feed.** It only maintains its
 own CSV — a human (or the package-request agent, if this ever gets wired

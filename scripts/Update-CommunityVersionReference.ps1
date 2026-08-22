@@ -45,7 +45,17 @@ $reference = if (Test-Path $ReferencePath) {
     @()
 }
 $referenceByName = @{}
-foreach ($row in $reference) { $referenceByName[$row.EvergreenName] = $row }
+foreach ($row in $reference) {
+    # Rows from before AmbiguousMatch existed won't have the property at
+    # all -- PowerShell's CSV-imported PSCustomObjects don't support
+    # plain assignment to a property that isn't already there (confirmed
+    # by testing: it throws "cannot be found"), so it has to be added
+    # explicitly rather than just set further down.
+    if (-not (Get-Member -InputObject $row -Name AmbiguousMatch)) {
+        Add-Member -InputObject $row -MemberType NoteProperty -Name AmbiguousMatch -Value $false
+    }
+    $referenceByName[$row.EvergreenName] = $row
+}
 
 # Never-checked apps first (oldest possible LastChecked), then whichever
 # checked apps have gone longest since their last check.
@@ -124,7 +134,32 @@ foreach ($app in $batch) {
         Published        = $published
         VersionMismatch  = $versionMismatch
         StaleDays        = $staleDaysActual
+        AmbiguousMatch   = $false
         LastChecked      = $today.ToString('yyyy-MM-dd')
+    }
+}
+
+# A single generic word (the last-resort candidate term above) can
+# exact-match a real but unrelated Community package, and get
+# independently claimed by several different evergreen apps that happen
+# to share that word -- found by testing against real data: 'OBS
+# Studio', 'Microsoft Visual Studio Code', 'Microsoft Visual Studio',
+# and three separate SSMS entries all matched the same 'studio' package,
+# which `choco info` shows is actually an unrelated "Studio 2.0" -- none
+# of them. Recomputed over the *whole* reference every run (not just
+# this batch), since two colliding entries can easily land in different
+# batches run days apart. A shared CommunityPackageId is only trusted
+# when every evergreen app claiming it agrees on the real version --
+# genuinely the same software wouldn't disagree about its own current
+# version, so disagreement is itself proof of a bad match, not a
+# tiebreaker to resolve.
+$byPackageId = $referenceByName.Values | Where-Object { $_.CommunityPackageId } | Group-Object CommunityPackageId
+foreach ($group in $byPackageId) {
+    $distinctNames = $group.Group.EvergreenName | Select-Object -Unique
+    if ($distinctNames.Count -le 1) { continue }
+    $distinctVersions = $group.Group.EvergreenVersion | ForEach-Object { ConvertTo-ComparableVersion $_ } | Select-Object -Unique
+    if ($distinctVersions.Count -gt 1) {
+        foreach ($row in $group.Group) { $row.AmbiguousMatch = $true }
     }
 }
 
@@ -132,11 +167,17 @@ New-Item -Path (Split-Path $ReferencePath -Parent) -ItemType Directory -Force | 
 $referenceByName.Values | Sort-Object EvergreenName | Export-Csv -Path $ReferencePath -NoTypeInformation -Encoding UTF8
 
 $flagged = $referenceByName.Values | Where-Object {
-    $_.VersionMismatch -eq $true -or ($_.StaleDays -ne $null -and [int]$_.StaleDays -gt $StaleDays)
+    -not $_.AmbiguousMatch -and ($_.VersionMismatch -eq $true -or ($_.StaleDays -ne $null -and [int]$_.StaleDays -gt $StaleDays))
 }
 
 Write-Host "`n$($flagged.Count) candidate(s) worth a look (version mismatch, or Published more than $StaleDays day(s) ago):"
 $flagged | Sort-Object EvergreenName | Format-Table EvergreenName, Application, CommunityPackageId, CommunityVersion, EvergreenVersion, StaleDays, VersionMismatch -AutoSize
+
+$ambiguous = $referenceByName.Values | Where-Object { $_.AmbiguousMatch }
+if ($ambiguous) {
+    Write-Host "`n$($ambiguous.Count) row(s) across the full reference share a CommunityPackageId with another app that disagrees on the real version -- almost certainly a bad match on at least one side, excluded from the candidate list above until resolved by hand:"
+    $ambiguous | Sort-Object CommunityPackageId, EvergreenName | Format-Table EvergreenName, CommunityPackageId, EvergreenVersion -AutoSize
+}
 
 $noMatch = ($batch | ForEach-Object { $_.Name }) | Where-Object { -not $referenceByName[$_].CommunityPackageId }
 if ($noMatch) {
