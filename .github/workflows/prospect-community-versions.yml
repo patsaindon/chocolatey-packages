@@ -10,7 +10,16 @@ name: Prospect Community Package Versions
 
 on:
   schedule:
-    - cron: "0 5 * * *"   # daily, 05:00 — ~19 days to cycle the full index at the default batch size
+    # Hourly to finish the first full pass over evergreen-api's ~565 apps
+    # quickly (~19 runs at the default batch size and ~18 min/run,
+    # confirmed by testing at batch size 15 — well under a day, not the
+    # daily schedule's ~19 days). Once the reference has full first-pass
+    # coverage, consider dialing this back down (e.g. to daily) — the
+    # data behind each row rarely changes minute to minute, so hourly
+    # re-checks past that point mostly just re-confirm what's already
+    # known, at the cost of the single self-hosted runner's time and a
+    # steady trickle of commits to main.
+    - cron: "0 * * * *"
   workflow_dispatch:
     inputs:
       batch_size:
