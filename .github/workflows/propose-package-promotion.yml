@@ -66,9 +66,25 @@ jobs:
 
           $existingPr = gh pr list --head $branch --state open --json url --jq '.[0].url'
           if (-not $existingPr) {
+            $bodyLines = @(
+              "Diffed staging vs. production. Merging this PR is the approval to push these package/version pairs to production -- see promotions/pending.yml and docs/architecture.md section 9.4."
+            )
+            # A package pulled in only because something else being
+            # promoted depends on it isn't obvious from the plain
+            # name|version list alone -- called out here so a reviewer
+            # isn't left guessing why an unrelated-looking entry showed up.
+            $dependents = @($candidates | Where-Object { $_.dependencyOf })
+            if ($dependents.Count -gt 0) {
+              $bodyLines += ""
+              $bodyLines += "Included because something else in this batch depends on them:"
+              foreach ($d in $dependents) {
+                $bodyLines += "- ``$($d.name) $($d.version)`` -- needed by $($d.dependencyOf)"
+              }
+            }
+            $prBody = $bodyLines -join "`n"
             gh pr create --base main --head $branch `
               --title "Promote to production: $($candidates.Count) package(s)" `
-              --body "Diffed staging vs. production. Merging this PR is the approval to push these package/version pairs to production -- see promotions/pending.yml and docs/architecture.md section 9.4."
+              --body $prBody
           } else {
             Write-Host "Updated existing PR: $existingPr"
           }
