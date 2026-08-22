@@ -3,13 +3,14 @@ import path from "node:path";
 import { z } from "zod";
 import { textResult, REPO_ROOT } from "../lib/exec.js";
 import { fetchEvergreenVariants, pickPreferredVariant, fetchEvergreenAppIndexEntry } from "../lib/evergreen.js";
+import { readKnowledge } from "../lib/knowledge.js";
 
 export const name = "scaffold_internal_package";
 
 export const config = {
   title: "Scaffold Internal Package",
   description:
-    "Copies internal/_template/ to internal/<package_id>/ and fills in the placeholders it can (id, owner, description, install script, update.ps1's releases URL, and a coherent title/authors/projectUrl/tags for the nuspec). Pass evergreen_app_name (from search_evergreen_app) to generate a real, working au_GetLatest AND to seed the nuspec's title/authors/projectUrl from evergreen's own app index, instead of a generic placeholder for either. Pass title/vendor_name explicitly to override or to fill these in for a non-evergreen package. Pass silent_args (from search_silent_install_switch) to fill in a real silent-install flag. Anything left unfilled still needs a human to research before this package updates itself correctly.",
+    "Copies internal/_template/ to internal/<package_id>/ and fills in the placeholders it can (id, owner, description, install script, update.ps1's releases URL, and a coherent title/authors/projectUrl/tags for the nuspec). Pass evergreen_app_name (from search_evergreen_app) to generate a real, working au_GetLatest AND to seed the nuspec's title/authors/projectUrl from evergreen's own app index, instead of a generic placeholder for either. Pass title/vendor_name explicitly to override or to fill these in for a non-evergreen package. Pass vendor (the same slug used with lookup_package_knowledge) to also seed silent_args/source_url from knowledge/<vendor>.yml when you haven't found a fresher value yourself this run — call lookup_package_knowledge first if you want to know what it'll use before scaffolding. Pass silent_args explicitly (e.g. from search_silent_install_switch or a real chocolateyInstall.ps1 via get_community_package_tools) to fill in a real silent-install flag; an explicit value always wins over the knowledge base. Anything left unfilled still needs a human to research before this package updates itself correctly.",
   inputSchema: {
     package_id: z
       .string()
@@ -34,6 +35,12 @@ export const config = {
       .optional()
       .describe("Where this software publishes releases, and the nuspec's <projectUrl> — falls back to evergreen's own homepage link when evergreen_app_name is given"),
     notes: z.string().optional().describe("Short description / notes"),
+    vendor: z
+      .string()
+      .optional()
+      .describe(
+        "Vendor/product-family slug (same one used with lookup_package_knowledge/write_package_knowledge) — if given, knowledge/<vendor>.yml's own 'silent_args' and 'source_url' facts (if recorded) fill in for silent_args/source_url when those aren't passed explicitly."
+      ),
     evergreen_app_name: z
       .string()
       .optional()
@@ -160,6 +167,7 @@ export async function handler({
   vendor_name,
   source_url,
   notes,
+  vendor,
   evergreen_app_name,
   evergreen_image_type,
   silent_args,
@@ -203,13 +211,31 @@ export async function handler({
     }
   }
 
+  // Read once, up front, same reasoning as the evergreen fetch above: this
+  // was previously only ever read by the agent calling lookup_package_
+  // knowledge itself and manually copying values into silent_args/
+  // source_url — easy to forget, and found by testing that it in fact was
+  // forgotten (temurin25's real knowledge entry never got a silent_args
+  // recorded even though a real one was surely used). A missing/unreadable
+  // vendor file is never fatal — every field it would have seeded still
+  // has an explicit-parameter, evergreen, or generic fallback.
+  let knowledgeFacts = null;
+  if (vendor) {
+    try {
+      knowledgeFacts = await readKnowledge(vendor);
+    } catch {
+      // non-fatal
+    }
+  }
+
   const effectiveTitle = title || appIndexEntry?.Application || prettifyPackageId(package_id);
   // Distinct from effectiveVendorName's owner_team fallback below: a tag
   // should describe the *software*, not who owns the internal package, so
   // it's only set when there's a real vendor/product name to slugify.
   const realVendorName = vendor_name || appIndexEntry?.Application || null;
   const effectiveVendorName = realVendorName || owner_team;
-  const effectiveProjectUrl = source_url || appIndexEntry?.Link || null;
+  const effectiveProjectUrl = source_url || appIndexEntry?.Link || knowledgeFacts?.source_url || null;
+  const effectiveSilentArgs = silent_args || knowledgeFacts?.silent_args || null;
   const packageSourceUrl = `https://github.com/patsaindon/chocolatey-packages/tree/main/internal/${package_id}`;
 
   let usedEvergreen = false;
@@ -259,13 +285,13 @@ export async function handler({
   await replaceInFile(path.join(targetDir, "tools", "chocolateyinstall.ps1"), [
     [/packageName\s*= 'CHANGE_ME'/, `packageName    = '${package_id}'`],
     [/softwareName\s*= 'CHANGE_ME\*'/, `softwareName   = '${package_id}*'`],
-    ...(silent_args ? [[/silentArgs\s*= '\/S'(\s*#[^\n]*)?/, `silentArgs     = '${silent_args}'`]] : []),
+    ...(effectiveSilentArgs ? [[/silentArgs\s*= '\/S'(\s*#[^\n]*)?/, `silentArgs     = '${effectiveSilentArgs}'`]] : []),
   ]);
 
   if (!usedEvergreen) {
     await replaceInFile(path.join(targetDir, "update.ps1"), [
-      ...(source_url
-        ? [[/\$releases = 'https:\/\/CHANGE_ME\/releases'/, `$releases = '${source_url}'`]]
+      ...(effectiveProjectUrl
+        ? [[/\$releases = 'https:\/\/CHANGE_ME\/releases'/, `$releases = '${effectiveProjectUrl}'`]]
         : []),
       // Best-effort default assuming release filenames start with the
       // package id — a human still needs to verify this against the real
@@ -289,13 +315,15 @@ export async function handler({
           : evergreenError
             ? `evergreen_app_name given but lookup failed (${evergreenError}) — fell back to the generic placeholder`
             : "generic placeholder — no evergreen_app_name given",
-        silent_args_source: silent_args ? `seeded ('${silent_args}')` : "generic '/S' placeholder — no silent_args given",
+        silent_args_source: effectiveSilentArgs
+          ? `${effectiveSilentArgs}${silent_args ? " (explicit)" : ` (from knowledge/${vendor}.yml — write_package_knowledge if this turns out wrong or missing for the next package)`}`
+          : "generic '/S' placeholder — no silent_args given and none recorded in the knowledge base for this vendor",
         nuspec: {
           title: `${effectiveTitle}${title ? " (explicit)" : appIndexEntry ? " (from evergreen's app index)" : " (prettified package_id — pass 'title' explicitly if this doesn't read naturally)"}`,
           authors: `${effectiveVendorName}${vendor_name ? " (explicit)" : appIndexEntry ? " (from evergreen's app index)" : " (fell back to owner_team — pass 'vendor_name' if this software has a different real publisher)"}`,
           projectUrl: effectiveProjectUrl
-            ? `${effectiveProjectUrl}${source_url ? " (explicit)" : " (from evergreen's app index)"}`
-            : "left empty — pass 'source_url' or an evergreen_app_name with a homepage link",
+            ? `${effectiveProjectUrl}${source_url ? " (explicit)" : appIndexEntry ? " (from evergreen's app index)" : ` (from knowledge/${vendor}.yml)`}`
+            : "left empty — pass 'source_url', an evergreen_app_name with a homepage link, or record one in the knowledge base",
           tags,
         },
         still_needs_manual_review:

@@ -10,11 +10,25 @@ export const name = "get_community_package_tools";
 export const config = {
   title: "Get Community Package Tools",
   description:
-    "Downloads a Chocolatey Community Repository package (read-only — never internalizes, never pushes anywhere) and returns its tools/chocolateyInstall.ps1 (and chocolateyUninstall.ps1, if present) as text. Useful when scaffolding an internal AU package for software that already has a Community package: its real, community-vetted install script is often a better starting point for silentArgs/softwareName/fileType than a generic guess or a best-effort switch-catalog scrape. Many Community packages split the real install logic into a '<id>.install' variant — the bare id is just a metapackage with no tools/ folder at all — this is tried automatically if the given id has none, found by testing against a real package (7zip has no tools/ folder; 7zip.install does).",
+    "Downloads a Chocolatey Community Repository package (read-only — never internalizes, never pushes anywhere) and returns its tools/chocolateyInstall.ps1 (and chocolateyUninstall.ps1, if present) as text, plus a best-effort detectedSilentArgs pulled straight out of that script if a recognizable 'silentArgs = ...' assignment is in it — checking it yourself in the returned file text first is still worth doing, this is a regex over an arbitrary third-party script, not a guarantee. Useful when scaffolding an internal AU package for software that already has a Community package: its real, community-vetted install script is often a better starting point for silentArgs/softwareName/fileType than a generic guess or a best-effort switch-catalog scrape. Many Community packages split the real install logic into a '<id>.install' variant — the bare id is just a metapackage with no tools/ folder at all — this is tried automatically if the given id has none, found by testing against a real package (7zip has no tools/ folder; 7zip.install does).",
   inputSchema: {
     package_id: z.string().describe("Chocolatey Community package id to read from, e.g. '7zip'"),
   },
 };
+
+/** Best-effort extraction of a `silentArgs = '...'` (or "...") assignment
+ * from a chocolateyInstall.ps1's text -- the common Chocolatey packaging
+ * convention (a $packageArgs hashtable with a silentArgs key), confirmed
+ * against a real package (7zip.install). Not exhaustive: scripts that
+ * build the switch differently (string concatenation, an array of
+ * switches, a per-OS branch) won't match, hence "detected", not
+ * "confirmed" -- the caller still gets the full script text to check by
+ * eye. Returns null rather than a wrong guess when nothing matches. */
+function extractSilentArgs(installScript) {
+  if (!installScript) return null;
+  const match = installScript.match(/silentArgs\s*=\s*(['"])((?:(?!\1).)*)\1/);
+  return match ? match[2] : null;
+}
 
 async function downloadAndExtract(packageId, tempDir) {
   const resolved = await resolveLatestVersion(packageId);
@@ -103,7 +117,20 @@ export async function handler({ package_id }) {
       );
     }
 
-    return textResult(JSON.stringify({ resolvedFrom, version: result.version, files: result.files }, null, 2));
+    const detectedSilentArgs = extractSilentArgs(result.files["chocolateyInstall.ps1"]);
+
+    return textResult(
+      JSON.stringify(
+        {
+          resolvedFrom,
+          version: result.version,
+          detectedSilentArgs: detectedSilentArgs ?? "none recognized -- check tools/chocolateyInstall.ps1's text yourself",
+          files: result.files,
+        },
+        null,
+        2
+      )
+    );
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true });
   }

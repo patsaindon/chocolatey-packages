@@ -7,13 +7,13 @@ export const name = "write_package_knowledge";
 export const config = {
   title: "Write Package Knowledge",
   description:
-    "Writes or updates knowledge/<vendor>.yml locally with facts learned or corrected while scaffolding/updating a package for this vendor. Merges into whatever's already recorded rather than overwriting it wholesale. Only writes to the local working tree -- never commits or pushes. Include the returned path in open_pull_request's `files` list so a human reviews this change in the same PR as the package it came from, exactly like a code change -- never write here without also doing that.",
+    "Writes or updates knowledge/<vendor>.yml locally with facts learned or corrected while scaffolding/updating a package for this vendor. Merges into whatever's already recorded rather than overwriting it wholesale. Only writes to the local working tree -- never commits or pushes. Include the returned path in open_pull_request's `files` list so a human reviews this change in the same PR as the package it came from, exactly like a code change -- never write here without also doing that. Always call this with 'silent_args' and/or 'source_url' after a package from a vendor you don't already have both recorded for, whenever you found either one this run (get_community_package_tools' detectedSilentArgs, search_silent_install_switch, a working install script you read yourself, the releases page you scaffolded against) -- these two are easy to find once and then never write down, leaving the next package from the same vendor to rediscover them from scratch.",
   inputSchema: {
     vendor: z.string().describe("Same vendor slug used with lookup_package_knowledge."),
     facts: z
       .record(z.string())
       .describe(
-        "Flat key/value facts to record or correct, e.g. { checksum_field: 'Checksum', image_type_default: 'jdk' }. Include a 'notes' key (free text: what was learned and how it was confirmed) and a 'last_verified_via' key (the package id or PR this came from)."
+        "Flat key/value facts to record or correct. Standard field names: 'checksum_field', 'image_type_default', 'architecture_default', 'version_sanitize' (au_GetLatest concerns), and 'silent_args' / 'source_url' (scaffold_internal_package reads these two back automatically via its own 'vendor' parameter). Include a 'notes' key (free text: what was learned and how it was confirmed) and a 'last_verified_via' key (the package id or PR this came from)."
       ),
   },
 };

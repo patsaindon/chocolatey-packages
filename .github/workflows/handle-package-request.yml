@@ -91,45 +91,56 @@ jobs:
 
           - "Internal (AU-based ...)": before scaffolding, pick a short
             vendor slug for the software (e.g. "adoptium" for Eclipse
-            Temurin) and call lookup_package_knowledge with it — if an
-            earlier package from this vendor already recorded facts
-            (checksum field name, image-type/architecture default,
-            version-format quirks, a known-good silent-install switch),
-            reuse them instead of rediscovering them from scratch. Then
-            call search_evergreen_app with the package name; if it finds a
-            confident match, note its exact 'name' field to pass as
-            scaffold_internal_package's evergreen_app_name (this makes
+            Temurin) — reuse the same slug across every package you ever
+            handle from this vendor — and call lookup_package_knowledge
+            with it. If it already has 'silent_args' and/or 'source_url'
+            recorded, you can pass this same vendor slug straight through
+            to scaffold_internal_package's own 'vendor' parameter later
+            and skip searching for whichever of the two is already there.
+            Then call search_evergreen_app with the package name; if it
+            finds a confident match, note its exact 'name' field to pass
+            as scaffold_internal_package's evergreen_app_name (this makes
             scaffold_internal_package generate a real, working
-            au_GetLatest instead of a generic placeholder). Also call
-            get_community_package_tools with the package id (and, if that
-            finds nothing and the id doesn't already end in '.install',
-            you don't need to retry it yourself — it already tries that
-            variant automatically) — many packages you're asked to make an
-            internal AU version of (to track the vendor directly instead
-            of lagging behind Community's own release cadence) already
-            have a real, working chocolateyInstall.ps1 on Community, which
-            is usually a better source for silentArgs/softwareName/
-            fileType than a guess. Only if that finds nothing, fall back
-            to search_silent_install_switch with the package name — it's a
-            best-effort search of one snapshot page, so a miss doesn't
-            mean no switch exists — and if it finds a confident match,
-            pass its silentInstallSwitch value as scaffold_internal_
-            package's silent_args. Then call scaffold_internal_package
-            with the package_id/owner_team/source_url/notes from the form
-            plus whichever of evergreen_app_name/silent_args you found,
-            plus the form's "Software name"/"Vendor / publisher" fields as
-            title/vendor_name if given (these seed the nuspec's
-            <title>/<authors> — leave them out and let evergreen or the
-            generic fallback handle it if the form left them blank),
-            call lint_package on the result to confirm it's structurally
-            valid. If you learned or corrected a vendor-level fact this
-            run (not already exactly what lookup_package_knowledge
-            returned), call write_package_knowledge with the same vendor
-            slug to record it, and include the file it reports writing in
-            open_pull_request's files list alongside the package files —
-            never skip this step silently if you did learn something, and
-            never call write_package_knowledge just to restate what was
-            already returned unchanged. Then call open_pull_request with
+            au_GetLatest instead of a generic placeholder). For whichever
+            of silent_args/source_url the knowledge lookup didn't already
+            have: call get_community_package_tools with the package id
+            (and, if that finds nothing and the id doesn't already end in
+            '.install', you don't need to retry it yourself — it already
+            tries that variant automatically) — many packages you're
+            asked to make an internal AU version of (to track the vendor
+            directly instead of lagging behind Community's own release
+            cadence) already have a real, working chocolateyInstall.ps1
+            on Community, and its own detectedSilentArgs field is usually
+            a better source for silentArgs than a guess (it's a regex
+            over a real script, not a guarantee — sanity-check it against
+            the returned file text before trusting it). Only if that
+            finds nothing, fall back to search_silent_install_switch with
+            the package name — it's a best-effort search of one snapshot
+            page, so a miss doesn't mean no switch exists. Then call
+            scaffold_internal_package with the package_id/owner_team/
+            source_url/notes from the form, the vendor slug, plus
+            whichever of evergreen_app_name/silent_args you found
+            yourself this run (an explicit value always wins over the
+            vendor's knowledge-base one), plus the form's "Software
+            name"/"Vendor / publisher" fields as title/vendor_name if
+            given (these seed the nuspec's <title>/<authors> — leave them
+            out and let evergreen or the generic fallback handle it if
+            the form left them blank), call lint_package on the result to
+            confirm it's structurally valid. If you found a real
+            silent_args or source_url this run that lookup_package_
+            knowledge didn't already have for this vendor (whether from
+            get_community_package_tools, search_silent_install_switch, or
+            your own reading of a script), call write_package_knowledge
+            with the same vendor slug to record it — don't let a value
+            you had to search for die with this one package when the next
+            one from the same vendor could just reuse it. Also record any
+            other vendor-level fact you learned or corrected (checksum
+            field name, image-type/architecture default, version-format
+            quirks). Either way, include the file write_package_knowledge
+            reports writing in open_pull_request's files list alongside
+            the package files — never skip this step silently if you did
+            learn something, and never call write_package_knowledge just
+            to restate what was already returned unchanged. Then call open_pull_request with
             all the files scaffold_internal_package (and, if applicable,
             write_package_knowledge) reported, a branch named
             package-request/<package_id>, and a PR body that says whether
