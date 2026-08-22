@@ -62,7 +62,16 @@ jobs:
           git checkout -B $branch
           git add promotions/pending.yml
           git commit -m "Update pending production promotions ($($candidates.Count) package(s))"
-          git push origin $branch --force-with-lease
+          # Plain --force, not --force-with-lease: found by testing that
+          # a stale local view of origin/promote/pending-production (e.g.
+          # after an earlier PR from this same branch was merged with its
+          # branch deleted) makes --force-with-lease refuse to push at
+          # all ("stale info"), silently leaving no commit for gh pr
+          # create to work from. This branch has exactly one writer --
+          # this workflow, always fully regenerating it from current main
+          # on every run -- so there's no concurrent-edit risk
+          # --force-with-lease would be protecting against here.
+          git push origin $branch --force
 
           $existingPr = gh pr list --head $branch --state open --json url --jq '.[0].url'
           if (-not $existingPr) {
