@@ -6,10 +6,28 @@ name: Handle Package Request
 # production, never merging its own PR. See docs/architecture.md.
 #
 # Runner prerequisites beyond the existing choco/git/gh/grype ones: Node.js
-# (verified against v26 here), the `claude` CLI, and `winget` (used by
-# get_winget_package_manifest to resolve a package name/id and its latest
-# version — confirmed already present on this runner, ships with modern
-# Windows), all on PATH.
+# (verified against v26 here) and the `claude` CLI, both on PATH.
+#
+# `winget` (used by get_winget_package_manifest) is NOT reliably available
+# here, confirmed by a real end-to-end run: this workflow's runner service
+# runs as LocalSystem (`sc.exe query`/`Get-CimInstance Win32_Service`
+# confirmed it), while winget itself is only installed as a per-user MSIX
+# App Execution Alias under the interactive account's own profile
+# (`%LocalAppData%\Microsoft\WindowsApps\winget.exe`) — LocalSystem can't
+# resolve or run it, a documented Microsoft limitation (winget doesn't
+# support running as SYSTEM), not a bug in this repo's code. A real request
+# (`doxx`, issue #9) hit exactly this: get_winget_package_manifest failed
+# with `spawn winget ENOENT`, and the agent correctly fell through to the
+# next source in its own fallback chain (get_community_package_tools, then
+# download_installer_file + get_installer_signals) without needing to be
+# told to — the degraded-gracefully behavior this fallback chain was
+# designed for, observed for real rather than assumed. Fixing this for
+# real would mean either running the runner service under a real user
+# account instead of LocalSystem, or provisioning winget machine-wide
+# (e.g. via Intune/`Add-AppxProvisionedPackage`) — both are host/infra
+# decisions outside what this workflow file or the MCP server can fix on
+# their own, so get_winget_package_manifest stays registered (harmless
+# when it fails cleanly) rather than removed.
 #
 # get_installer_signals (static MSI/EXE analysis, no execution) and its
 # companion download_installer_file are both headless-safe and run here
