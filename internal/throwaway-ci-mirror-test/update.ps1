@@ -72,11 +72,22 @@ function global:au_BeforeUpdate($Package) {
 }
 
 function global:au_AfterUpdate($Package) {
-    # Diagnostic only -- confirms update_files (au_SearchReplace) completed
-    # before AU calls `choco pack`, to narrow down a real CI-only failure
-    # (Section 15) that happens somewhere after au_BeforeUpdate returns
-    # successfully but before any further AU output appears at all.
-    au_BeforeUpdateLog "[au_AfterUpdate] $($Package.Name): update_files completed, about to choco pack"
+    # Logs $LASTEXITCODE right before AU's own `choco pack` call -- a real
+    # CI-only failure (Section 15) happens somewhere after au_BeforeUpdate
+    # returns successfully (confirmed via this same log file showing every
+    # mirror step complete) but before any further AU output appears at
+    # all, and AU's own choco-pack-success check
+    # (`if ($LastExitCode -ne 0) { throw "Choco pack failed..." }`,
+    # majkinetor/AU's Update-Package.ps1) reads this same global,
+    # process-wide variable -- one a deeply-nested native call earlier in
+    # this same package's own processing (Grype, MpCmdRun, both run by
+    # au_BeforeUpdate's own mirror step) could leave at a stale, non-zero
+    # value that has nothing to do with choco pack's own real result.
+    # Reset to a known-clean 0 here, immediately before AU's own check
+    # would run, so a stale value from earlier native calls can't be
+    # mistaken for choco pack's own failure.
+    au_BeforeUpdateLog "[au_AfterUpdate] $($Package.Name): update_files completed, LASTEXITCODE was '$LASTEXITCODE' -- resetting to 0 before choco pack"
+    $global:LASTEXITCODE = 0
 }
 
 function global:au_GetLatest {
