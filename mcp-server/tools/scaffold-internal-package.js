@@ -54,7 +54,19 @@ export const config = {
     silent_args: z
       .string()
       .optional()
-      .describe("Real silent-install switch, e.g. from search_silent_install_switch (falls back to a generic '/S' guess if omitted)"),
+      .describe("Real silent-install switch, e.g. from search_silent_install_switch (falls back to a generic '/S' guess if omitted). Ignored when package_kind is 'portable' — there's no installer to run silently."),
+    package_kind: z
+      .enum(["installer", "portable"])
+      .optional()
+      .describe(
+        "'installer' (default): the release ships a real installer (.exe/.msi) that runs silently via Install-ChocolateyPackage — the only kind this tool supported until this parameter was added. 'portable': the release is just a standalone CLI binary with no install wizard at all (confirmed by real testing: running one through the installer path would try to silently \"install\" a binary that isn't an installer, hanging or behaving unpredictably) — generates a chocolateyinstall.ps1 using Get-ChocolateyWebFile to place the binary under tools\\ instead, which Chocolatey auto-shims onto PATH."
+      ),
+    binary_name: z
+      .string()
+      .optional()
+      .describe(
+        "Portable packages only: the real upstream command name users should type to run this tool, e.g. 'cgc' for a package whose id is 'codegraphcontext' — this becomes the shimmed executable's name, which matters more than the package id for a CLI tool's actual usability. Defaults to package_id if omitted."
+      ),
     nexus_generic_base_url: z
       .string()
       .url()
@@ -254,7 +266,10 @@ export async function handler({
   nexus_generic_repository,
   nexus_generic_path_prefix,
   dependencies,
+  package_kind,
+  binary_name,
 }) {
+  const effectivePackageKind = package_kind || "installer";
   const templateDir = path.join(REPO_ROOT, "internal", "_template");
   const targetDir = path.join(REPO_ROOT, "internal", package_id);
 
@@ -382,11 +397,49 @@ export async function handler({
     [/notes: ""/, `notes: "${description.replace(/"/g, '\\"')}"`],
   ]);
 
-  await replaceInFile(path.join(targetDir, "tools", "chocolateyinstall.ps1"), [
-    [/packageName\s*= 'CHANGE_ME'/, `packageName    = '${package_id}'`],
-    [/softwareName\s*= 'CHANGE_ME\*'/, `softwareName   = '${package_id}*'`],
-    ...(effectiveSilentArgs ? [[/silentArgs\s*= '\/S'(\s*#[^\n]*)?/, `silentArgs     = '${effectiveSilentArgs}'`]] : []),
-  ]);
+  const effectiveBinaryName = binary_name || package_id;
+  if (effectivePackageKind === "portable") {
+    // A full overwrite, not the field-by-field replaceInFile used below --
+    // found by testing that a portable CLI binary (CodeGraphContext's
+    // cgc-windows.exe) has no installer at all, so the installer
+    // template's whole shape (Install-ChocolateyPackage, softwareName for
+    // an Add/Remove Programs lookup, a silent switch) doesn't apply, not
+    // just one or two of its fields. Chocolatey auto-shims any .exe it
+    // finds under tools\ onto PATH (see internal/README.md) -- naming the
+    // downloaded file after the tool's own real command (binary_name),
+    // not necessarily the package id, is what actually determines what a
+    // user types to run it day to day.
+    await fs.writeFile(
+      path.join(targetDir, "tools", "chocolateyinstall.ps1"),
+      `$ErrorActionPreference = 'Stop'
+
+$toolsDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+# url/checksum are left empty here on purpose: update.ps1's au_SearchReplace
+# fills them in from au_GetLatest's result at update time. Committing this
+# file with empty url/checksum is the normal, expected state for an AU
+# package — do not fill them in by hand.
+$packageArgs = @{
+  packageName  = '${package_id}'
+  url          = ''
+  checksum     = ''
+  checksumType = 'sha256'
+  # Renames the downloaded binary to this stable filename -- Chocolatey
+  # auto-shims any .exe under tools\\ onto PATH, so this is also the
+  # command name '${effectiveBinaryName}' users get after install.
+  fileFullPath = "$toolsDir\\${effectiveBinaryName}.exe"
+}
+
+Get-ChocolateyWebFile @packageArgs
+`,
+      "utf8"
+    );
+  } else {
+    await replaceInFile(path.join(targetDir, "tools", "chocolateyinstall.ps1"), [
+      [/packageName\s*= 'CHANGE_ME'/, `packageName    = '${package_id}'`],
+      [/softwareName\s*= 'CHANGE_ME\*'/, `softwareName   = '${package_id}*'`],
+      ...(effectiveSilentArgs ? [[/silentArgs\s*= '\/S'(\s*#[^\n]*)?/, `silentArgs     = '${effectiveSilentArgs}'`]] : []),
+    ]);
+  }
 
   if (!usedEvergreen && !usedNexusGeneric) {
     await replaceInFile(path.join(targetDir, "update.ps1"), [
@@ -417,9 +470,14 @@ export async function handler({
             : evergreenError
               ? `evergreen_app_name given but lookup failed (${evergreenError}) — fell back to the generic placeholder`
               : "generic placeholder — no evergreen_app_name given",
-        silent_args_source: effectiveSilentArgs
-          ? `${effectiveSilentArgs}${silent_args ? " (explicit)" : ` (from knowledge/${vendor}.yml — write_package_knowledge if this turns out wrong or missing for the next package)`}`
-          : "generic '/S' placeholder — no silent_args given and none recorded in the knowledge base for this vendor",
+        package_kind: effectivePackageKind,
+        binary_name: effectivePackageKind === "portable" ? effectiveBinaryName : undefined,
+        silent_args_source:
+          effectivePackageKind === "portable"
+            ? "not applicable — portable binary, no installer to run silently, tools/chocolateyinstall.ps1 uses Get-ChocolateyWebFile instead of Install-ChocolateyPackage"
+            : effectiveSilentArgs
+              ? `${effectiveSilentArgs}${silent_args ? " (explicit)" : ` (from knowledge/${vendor}.yml — write_package_knowledge if this turns out wrong or missing for the next package)`}`
+              : "generic '/S' placeholder — no silent_args given and none recorded in the knowledge base for this vendor",
         nuspec: {
           title: `${effectiveTitle}${title ? " (explicit)" : appIndexEntry ? " (from evergreen's app index)" : " (prettified package_id — pass 'title' explicitly if this doesn't read naturally)"}`,
           authors: `${effectiveVendorName}${vendor_name ? " (explicit)" : appIndexEntry ? " (from evergreen's app index)" : " (fell back to owner_team — pass 'vendor_name' if this software has a different real publisher)"}`,

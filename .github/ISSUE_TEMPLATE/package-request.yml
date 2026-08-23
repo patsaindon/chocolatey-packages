@@ -66,6 +66,36 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: package_kind
+    attributes:
+      label: Package kind (internal packages only)
+      description: >
+        Does the release ship a real installer, or just a standalone binary?
+        Confirmed by real testing that these need genuinely different
+        packaging — running a portable binary through the installer path
+        (silently "installing" something with no installer) hangs or
+        behaves unpredictably. Leave as default for internalized packages.
+      options:
+        - Installer (runs silently, e.g. a .exe/.msi with a silent switch)
+        - Portable binary (a standalone .exe, no install wizard at all)
+      default: 0
+    validations:
+      required: false
+
+  - type: input
+    id: binary_name
+    attributes:
+      label: Binary name (portable packages only)
+      description: >
+        The real upstream command name you'll actually type to run this
+        tool, e.g. "cgc" for a package whose id is "codegraphcontext" —
+        Chocolatey auto-shims this onto PATH, so it matters more than the
+        package id for day-to-day use. Leave blank to default to the
+        package id.
+    validations:
+      required: false
+
   - type: input
     id: nexus_generic_base_url
     attributes:

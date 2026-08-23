@@ -132,10 +132,26 @@ jobs:
             finds a confident match, note its exact 'name' field to pass
             as scaffold_internal_package's evergreen_app_name (this makes
             scaffold_internal_package generate a real, working
-            au_GetLatest instead of a generic placeholder). For whichever
-            of silent_args/source_url the knowledge lookup didn't already
-            have, try these in order and stop at the first confident hit
-            — each is progressively less structured than the last:
+            au_GetLatest instead of a generic placeholder).
+
+            Check the form's "Package kind" field before anything else
+            below. If it says "Portable binary" (a standalone .exe with no
+            install wizard at all — confirmed by real testing that running
+            one through the installer path hangs or behaves
+            unpredictably, since there's nothing to silently install),
+            skip the entire silent_args discovery chain below (steps 1-4)
+            — it doesn't apply, there's no installer to find a switch
+            for. Pass package_kind: 'portable' and binary_name (from the
+            form's own field, or omit to default to package_id) straight
+            through to scaffold_internal_package instead, and skip ahead
+            to the paragraph starting "Then call scaffold_internal_package"
+            below. Otherwise (including the default, unset case), this is
+            a real installer — proceed with the discovery chain:
+
+            For whichever of silent_args/source_url the knowledge lookup
+            didn't already have, try these in order and stop at the first
+            confident hit — each is progressively less structured than
+            the last:
 
             1. get_winget_package_manifest with the package name (or the
                exact winget id if you already know it) — Microsoft's own
@@ -193,7 +209,9 @@ jobs:
             name"/"Vendor / publisher" fields as title/vendor_name if
             given (these seed the nuspec's <title>/<authors> — leave them
             out and let evergreen or the generic fallback handle it if
-            the form left them blank), call lint_package on the result to
+            the form left them blank), plus package_kind/binary_name from
+            the form's own fields when this is the portable case handled
+            above, call lint_package on the result to
             confirm it's structurally valid. If you found a real
             silent_args or source_url this run that lookup_package_
             knowledge didn't already have for this vendor (whether from
