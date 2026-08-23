@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>throwaway-ci-mirror-test</id>
+    <version>0.0.0</version>
+    <title>Alacritty</title>
+    <authors>Alacritty</authors>
+    <owners>IT Ops</owners>
+    <projectUrl>https://alacritty.org/</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/throwaway-ci-mirror-test</packageSourceUrl>
+    <description>Internal package for throwaway-ci-mirror-test.</description>
+    <tags>internal alacritty</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

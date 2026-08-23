@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: throwaway-ci-mirror-test
+owner: IT Ops                  # owning team, drives notification routing
+notes: "Internal package for throwaway-ci-mirror-test."

@@ -1,0 +1,96 @@
+# AU (Chocolatey Automatic Packages) update script.
+# https://github.com/majkinetor/AU
+#
+# Run for a single package:  .\update.ps1 -Verbose
+# Run for every internal/ package: see update_all.ps1 / test_all.ps1 at the
+# repo root, and .github/workflows/update-internal-packages.yml.
+
+import-module au
+
+function global:au_SearchReplace {
+    @{
+        ".\tools\chocolateyinstall.ps1" = @{
+            "(?i)^(\s*url\s*=\s*)('.*')"      = "`$1'$($Latest.URL32)'"
+            "(?i)^(\s*checksum\s*=\s*)('.*')" = "`$1'$($Latest.Checksum32)'"
+        }
+    }
+}
+
+function global:au_BeforeUpdate($Package) {
+    # Mirrors the real binary au_GetLatest just resolved into Nexus generic
+    # (raw-format) hosted storage *before* au_SearchReplace writes anything
+    # above into chocolateyinstall.ps1 -- deliberately not Chocolatey's own
+    # Package Internalizer (`choco download --internalize`), which embeds a
+    # license check every consuming endpoint would then need a Chocolatey
+    # Business/MSP license to satisfy, confirmed by inspecting a real
+    # internalized package's own script. See docs/architecture.md section
+    # 15 ("generalizing the Nexus-mirror step") for the full rationale, and
+    # scripts/Publish-ToNexusGeneric.ps1 for what this actually does
+    # (download, scan, upload) -- this function only ever overwrites
+    # $Latest's own URL32/Checksum32 with what that script returns, so
+    # au_SearchReplace above needs no changes at all.
+    #
+    # Skipped, not a hard failure, when NEXUS_MIRROR_BASE_URL isn't set --
+    # keeps this optional for an ad-hoc local run that hasn't configured
+    # it; every real workflow in this repo does. Also skipped if the URL
+    # already points at this same Nexus base (e.g. a paywalled package,
+    # whose own au_GetLatest already reads straight from Nexus) -- mirroring
+    # an already-mirrored file would be pointless and would need write
+    # credentials that package type never otherwise needs.
+    if (-not $env:NEXUS_MIRROR_BASE_URL) {
+        Write-Warning "NEXUS_MIRROR_BASE_URL not set -- skipping the Nexus mirror step; $($Package.Name) will keep referencing its real vendor URL directly."
+        return
+    }
+    if ($global:Latest.URL32 -like "$($env:NEXUS_MIRROR_BASE_URL)*") {
+        return
+    }
+
+    $mirrored = & (Join-Path $PSScriptRoot '..' '..' 'scripts' 'Publish-ToNexusGeneric.ps1') `
+        -SourceUrl $global:Latest.URL32 `
+        -PackageId $Package.Name `
+        -Version $global:Latest.Version `
+        -NexusBaseUrl $env:NEXUS_MIRROR_BASE_URL `
+        -Repository $env:NEXUS_MIRROR_REPOSITORY
+
+    $global:Latest.URL32 = $mirrored.Url
+    $global:Latest.Checksum32 = $mirrored.Checksum
+}
+
+function global:au_GetLatest {
+    # Seeded from evergreen-api.stealthpuppy.com (https://eucpilots.com/evergreen/api/)
+    # for 'Alacritty' — verify the filter below still matches what
+    # this package actually wants to ship (was: Architecture=x86, InstallerType=Default).
+    $releases = "https://evergreen-api.stealthpuppy.com/app/Alacritty"
+    $variants = Invoke-RestMethod -Uri $releases -UserAgent "chocolatey-packages-mcp-server"
+    $latest = $variants | Where-Object { $_.Architecture -eq 'x86' -and $_.InstallerType -eq 'Default' } | Select-Object -First 1
+    if (-not $latest) { throw "No matching evergreen-api variant found for Alacritty." }
+
+    # The checksum field name varies per app — found by testing: 7zip uses
+    # 'Sha256', AdoptiumTemurin25 uses 'Checksum'. Try both rather than
+    # hardcoding one and silently getting an empty checksum for apps that
+    # use the other name.
+    $checksum = if ($latest.Sha256) { $latest.Sha256 } else { $latest.Checksum }
+
+    # Evergreen's Version can carry build-metadata syntax NuGet/choco
+    # versions don't accept (e.g. '25.0.4.1+1-LTS') — same sanitization
+    # already proven to work in production for temurin17's own
+    # hand-written au_GetLatest. But found by testing a *different* real
+    # app (Temurin25): that replacement isn't always enough on its own —
+    # some vendors' version strings have more numeric segments than
+    # NuGet/choco's 4-segment limit even after it, which temurin17's
+    # version format happened not to hit. Fail loudly here instead of
+    # letting choco pack fail later with a more confusing error.
+    $version = $latest.Version -replace '\+', '.'
+    if ($version -notmatch '^\d+(\.\d+){0,3}(-.+)?$') {
+        throw "Sanitized version '$version' has more than 4 numeric segments (NuGet/choco's limit) — adjust this au_GetLatest's version handling for Alacritty's actual version format."
+    }
+
+    return @{
+        URL32          = $latest.URI
+        Version        = $version
+        Checksum32     = $checksum
+        ChecksumType32 = 'sha256'
+    }
+}
+
+update -ChecksumFor none
