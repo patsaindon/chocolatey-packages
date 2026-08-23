@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: doxx
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Terminal tool to view .docx files without Office. Ships a real Windows MSI (doxx-x86_64-pc-windows-msvc.msi) with a matching .sha256 checksum file on GitHub Releases. MIT licensed."
