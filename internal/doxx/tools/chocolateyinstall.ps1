@@ -7,7 +7,7 @@ $toolsPath = Split-Path $MyInvocation.MyCommand.Definition
 # package — do not fill them in by hand.
 $packageArgs = @{
   packageName    = 'doxx'
-  fileType       = 'exe'                # adjust: exe / msi / msu
+  fileType       = 'msi'
   url            = ''
   softwareName   = 'doxx*'         # part of/whole software name, for uninstall registry lookup
   checksum       = ''

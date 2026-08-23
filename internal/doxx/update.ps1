@@ -17,18 +17,22 @@ function global:au_SearchReplace {
 }
 
 function global:au_GetLatest {
-    # TODO: point this at wherever this internal software actually publishes
-    # releases (an internal file share, artifact repo, or vendor page) and
-    # return at least URL32 + Version. See the AU README's "Public interface"
-    # section: https://github.com/majkinetor/AU#public-interface
-    $releases = 'https://github.com/bgreenwell/doxx/releases'
-    $page = Invoke-WebRequest -Uri $releases -UseBasicParsing
+    # Real GitHub Releases API lookup, not a placeholder -- confirmed by
+    # testing against the real releases page: doxx's Windows asset
+    # (doxx-x86_64-pc-windows-msvc.msi) carries no version in its own
+    # filename at all (unlike, say, an '<id>-<version>.exe' convention), so
+    # the version has to come from the release's own tag_name instead.
+    $releases = 'https://api.github.com/repos/bgreenwell/doxx/releases/latest'
+    $latest = Invoke-RestMethod -Uri $releases -UserAgent 'chocolatey-packages-mcp-server'
+    $asset = $latest.assets | Where-Object name -eq 'doxx-x86_64-pc-windows-msvc.msi'
+    if (-not $asset) {
+        throw "No 'doxx-x86_64-pc-windows-msvc.msi' asset found on doxx's latest release ($($latest.tag_name)) -- did the vendor rename it?"
+    }
 
-    $re  = 'doxx-(?<version>[\d.]+)\.exe'
-    $url = $page.Links | Where-Object href -match $re | Select-Object -First 1 -ExpandProperty href
-    $version = ($url -split '-' | Select-Object -Last 1) -replace '\.exe$'
-
-    return @{ URL32 = $url; Version = $version }
+    return @{ URL32 = $asset.browser_download_url; Version = $latest.tag_name -replace '^v' }
 }
 
-update -ChecksumFor none
+# doxx also publishes a matching .sha256 sidecar file per asset, but letting
+# AU download-and-hash the .msi itself (ChecksumFor 32) is simpler and just
+# as reliable, and matches the pattern already proven by alacritty/rufus.
+update -ChecksumFor 32
