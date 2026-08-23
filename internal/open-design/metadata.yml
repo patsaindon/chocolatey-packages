@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: open-design
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Real end-to-end pipeline test #2: this package id was surfaced by prospect-packaging-opportunities.yml's automated discovery (90,342 stars, created 2026-04-28, no existing Chocolatey Community package found via choco search open-design --exact). An open-source local-first desktop app that turns a coding agent (Claude Code/Codex/Cursor/etc.) into a design/prototyping engine (Apache-2.0 licensed)."
