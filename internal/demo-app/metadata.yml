@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: demo-app
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Third attempt for demo-app, after fixing two real bugs the previous two attempts surfaced: (1) missing source_url in the prompt for the paywalled type, causing a choco pack failure on empty projectUrl; (2) open_pull_request silently reusing a closed PR's stale URL instead of creating a fresh one. Real Nexus asset (demo-app-2.0.0.exe) is still in place."
