@@ -17,18 +17,24 @@ function global:au_SearchReplace {
 }
 
 function global:au_GetLatest {
-    # TODO: point this at wherever this internal software actually publishes
-    # releases (an internal file share, artifact repo, or vendor page) and
-    # return at least URL32 + Version. See the AU README's "Public interface"
-    # section: https://github.com/majkinetor/AU#public-interface
-    $releases = 'https://github.com/nexu-io/open-design/releases'
-    $page = Invoke-WebRequest -Uri $releases -UseBasicParsing
+    # Real GitHub Releases API lookup, not a placeholder -- confirmed against
+    # the real releases page: the Windows asset is
+    # 'open-design-<version>-win-x64-setup.exe' (a '-win-x64-setup' suffix
+    # between version and extension), and the release tag itself is
+    # 'open-design-v<version>' (package name baked into the tag, not a bare
+    # 'v<version>') -- both broke the placeholder regex, which assumed a
+    # plain '<id>-<version>.exe' shape neither actually has.
+    $releases = 'https://api.github.com/repos/nexu-io/open-design/releases/latest'
+    $latest = Invoke-RestMethod -Uri $releases -UserAgent 'chocolatey-packages-mcp-server'
+    $asset = $latest.assets | Where-Object name -match '^open-design-[\d.]+-win-x64-setup\.exe$'
+    if (-not $asset) {
+        throw "No 'open-design-<version>-win-x64-setup.exe' asset found on open-design's latest release ($($latest.tag_name)) -- did the vendor rename it?"
+    }
+    if ($latest.tag_name -notmatch '(?<version>\d+\.\d+\.\d+)') {
+        throw "Could not find a <major>.<minor>.<patch> version inside tag '$($latest.tag_name)'."
+    }
 
-    $re  = 'open-design-(?<version>[\d.]+)\.exe'
-    $url = $page.Links | Where-Object href -match $re | Select-Object -First 1 -ExpandProperty href
-    $version = ($url -split '-' | Select-Object -Last 1) -replace '\.exe$'
-
-    return @{ URL32 = $url; Version = $version }
+    return @{ URL32 = $asset.browser_download_url; Version = $Matches.version }
 }
 
-update -ChecksumFor none
+update -ChecksumFor 32
