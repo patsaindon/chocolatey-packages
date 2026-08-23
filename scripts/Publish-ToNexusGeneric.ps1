@@ -65,6 +65,21 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Writes to both the host AND a fixed, predictable log file -- found by
+# testing a real CI run that AU's own output handling can lose Write-Host
+# output entirely for a package whose processing throws (no trace of how
+# far it got, not even these checkpoints), something local testing never
+# reproduced. The file survives regardless of whatever AU itself does with
+# stdout/host streams; a workflow step can print it unconditionally
+# (`if: always()`) after the AU step, independent of AU's own behavior.
+$debugLogPath = Join-Path ([System.IO.Path]::GetTempPath()) 'nexus-mirror-debug.log'
+function Write-MirrorLog {
+    param([string]$Message)
+    $line = "[$([DateTime]::UtcNow.ToString('o'))] $Message"
+    Write-Host $line
+    Add-Content -Path $debugLogPath -Value $line -Encoding utf8
+}
+
 if (-not $Credentials) {
     throw "No write credentials given (pass -Credentials or set NEXUS_GENERIC_WRITE_TOKEN) -- refusing to mirror without one rather than attempt an anonymous write."
 }
@@ -77,22 +92,16 @@ try {
     if (-not $fileName) { $fileName = "$PackageId-$Version" }
     $localPath = Join-Path $tempDir $fileName
 
-    # Write-Host (not Write-Verbose) deliberately -- found by testing a real
-    # CI run that AU's own output buffering can lose an entire package's
-    # worth of piped ('| result') messages if that package's processing
-    # throws, leaving no trace of how far it got. These print unconditionally
-    # and immediately, so a future failure still shows exactly which step
-    # was reached.
-    Write-Host "[Publish-ToNexusGeneric] Downloading '$SourceUrl' -> '$localPath'"
+    Write-MirrorLog "[Publish-ToNexusGeneric] Downloading '$SourceUrl' -> '$localPath'"
     Invoke-WebRequest -Uri $SourceUrl -OutFile $localPath -UseBasicParsing
-    Write-Host "[Publish-ToNexusGeneric] Downloaded $((Get-Item $localPath).Length) bytes"
+    Write-MirrorLog "[Publish-ToNexusGeneric] Downloaded $((Get-Item $localPath).Length) bytes"
 
-    Write-Host "[Publish-ToNexusGeneric] Scanning downloaded file before mirroring it anywhere"
+    Write-MirrorLog "[Publish-ToNexusGeneric] Scanning downloaded file before mirroring it anywhere"
     & (Join-Path $PSScriptRoot 'scan-package.ps1') -RawFilePath $localPath -MinSeverity $MinSeverity
     if ($LASTEXITCODE -ne 0) {
         throw "'$PackageId' $Version failed scanning (scan-package.ps1 exit $LASTEXITCODE) -- not mirroring an unscanned or flagged binary to Nexus."
     }
-    Write-Host "[Publish-ToNexusGeneric] Scan passed"
+    Write-MirrorLog "[Publish-ToNexusGeneric] Scan passed"
 
     $checksum = (Get-FileHash -Path $localPath -Algorithm SHA256).Hash.ToLowerInvariant()
 
@@ -102,17 +111,17 @@ try {
     $authHeader = @{ Authorization = "Basic $([Convert]::ToBase64String($bytes))" }
 
     $uploadUri = "$($NexusBaseUrl.TrimEnd('/'))/repository/$Repository/$nexusPath"
-    Write-Host "[Publish-ToNexusGeneric] Uploading to '$uploadUri'"
+    Write-MirrorLog "[Publish-ToNexusGeneric] Uploading to '$uploadUri'"
     Invoke-RestMethod -Uri $uploadUri -Method Put -InFile $localPath -Headers $authHeader | Out-Null
-    Write-Host "[Publish-ToNexusGeneric] Upload complete"
+    Write-MirrorLog "[Publish-ToNexusGeneric] Upload complete"
 
     [pscustomobject]@{
         Url      = $uploadUri
         Checksum = $checksum
     }
 } catch {
-    Write-Host "[Publish-ToNexusGeneric] FAILED: $($_.Exception.GetType().FullName): $($_.Exception.Message)"
-    Write-Host "[Publish-ToNexusGeneric] Stack: $($_.ScriptStackTrace)"
+    Write-MirrorLog "[Publish-ToNexusGeneric] FAILED: $($_.Exception.GetType().FullName): $($_.Exception.Message)"
+    Write-MirrorLog "[Publish-ToNexusGeneric] Stack: $($_.ScriptStackTrace)"
     throw
 } finally {
     Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue

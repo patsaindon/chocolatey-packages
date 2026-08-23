@@ -16,7 +16,19 @@ function global:au_SearchReplace {
     }
 }
 
+function global:au_BeforeUpdateLog($Message) {
+    # Same fixed log file scripts/Publish-ToNexusGeneric.ps1 writes to --
+    # found by testing a real CI run that AU's own output handling can lose
+    # Write-Host entirely for a package whose processing throws, so this
+    # exists purely so a workflow step can dump the file unconditionally
+    # (`if: always()`) regardless of what AU itself does with the console.
+    $line = "[$([DateTime]::UtcNow.ToString('o'))] $Message"
+    Write-Host $line
+    Add-Content -Path (Join-Path ([System.IO.Path]::GetTempPath()) 'nexus-mirror-debug.log') -Value $line -Encoding utf8
+}
+
 function global:au_BeforeUpdate($Package) {
+    au_BeforeUpdateLog "[au_BeforeUpdate] ENTERED for $($Package.Name), URL32=$($global:Latest.URL32)"
     # Mirrors the real binary au_GetLatest just resolved into Nexus generic
     # (raw-format) hosted storage *before* au_SearchReplace writes anything
     # above into chocolateyinstall.ps1 -- deliberately not Chocolatey's own
@@ -42,11 +54,11 @@ function global:au_BeforeUpdate($Package) {
         return
     }
     if ($global:Latest.URL32 -like "$($env:NEXUS_MIRROR_BASE_URL)*") {
-        Write-Host "[au_BeforeUpdate] $($Package.Name): URL32 already points at the Nexus mirror base -- skipping (already mirrored, e.g. a paywalled package)."
+        au_BeforeUpdateLog "[au_BeforeUpdate] $($Package.Name): URL32 already points at the Nexus mirror base -- skipping (already mirrored, e.g. a paywalled package)."
         return
     }
 
-    Write-Host "[au_BeforeUpdate] $($Package.Name): mirroring $($global:Latest.URL32) to Nexus"
+    au_BeforeUpdateLog "[au_BeforeUpdate] $($Package.Name): mirroring $($global:Latest.URL32) to Nexus"
     $mirrored = & (Join-Path $PSScriptRoot '..' '..' 'scripts' 'Publish-ToNexusGeneric.ps1') `
         -SourceUrl $global:Latest.URL32 `
         -PackageId $Package.Name `
@@ -56,7 +68,7 @@ function global:au_BeforeUpdate($Package) {
 
     $global:Latest.URL32 = $mirrored.Url
     $global:Latest.Checksum32 = $mirrored.Checksum
-    Write-Host "[au_BeforeUpdate] $($Package.Name): mirrored to $($mirrored.Url)"
+    au_BeforeUpdateLog "[au_BeforeUpdate] $($Package.Name): mirrored to $($mirrored.Url)"
 }
 
 function global:au_GetLatest {

@@ -60,3 +60,21 @@ jobs:
           $ThrowOnErrors = $true
           ./test_all.ps1 -Root .\internal\
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Show Nexus-mirror diagnostic log (if any package used it)
+        # Found by testing a real CI run: AU's own output handling can lose
+        # every Write-Host/'| result' message for a package whose processing
+        # throws, leaving the step above with no clue why. Get-NexusMirror.ps1's
+        # own file-based log (scripts/Publish-ToNexusGeneric.ps1,
+        # internal/_template/update.ps1) survives that either way -- dumped
+        # here unconditionally so a failure above is still diagnosable.
+        if: always()
+        shell: pwsh
+        run: |
+          $logPath = Join-Path ([System.IO.Path]::GetTempPath()) 'nexus-mirror-debug.log'
+          if (Test-Path $logPath) {
+            Write-Host "--- nexus-mirror-debug.log ---"
+            Get-Content $logPath
+          } else {
+            Write-Host "No nexus-mirror-debug.log found -- no package's au_BeforeUpdate reached the mirror step this run."
+          }
