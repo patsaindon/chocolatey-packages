@@ -14,6 +14,8 @@ import * as lookupPackageKnowledge from "./tools/lookup-package-knowledge.js";
 import * as writePackageKnowledge from "./tools/write-package-knowledge.js";
 import * as getCommunityPackageTools from "./tools/get-community-package-tools.js";
 import * as getWingetPackageManifest from "./tools/get-winget-package-manifest.js";
+import * as getInstallerSignals from "./tools/get-installer-signals.js";
+import * as downloadInstallerFile from "./tools/download-installer-file.js";
 
 // Package-creation tools for the issue-triggered package request flow.
 // See docs/architecture.md and .github/workflows/handle-package-request.yml.
@@ -39,6 +41,8 @@ for (const tool of [
   writePackageKnowledge,
   getCommunityPackageTools,
   getWingetPackageManifest,
+  getInstallerSignals,
+  downloadInstallerFile,
 ]) {
   server.registerTool(tool.name, tool.config, tool.handler);
 }

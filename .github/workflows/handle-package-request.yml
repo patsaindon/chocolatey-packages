@@ -10,6 +10,16 @@ name: Handle Package Request
 # get_winget_package_manifest to resolve a package name/id and its latest
 # version — confirmed already present on this runner, ships with modern
 # Windows), all on PATH.
+#
+# get_installer_signals (static MSI/EXE analysis, no execution) and its
+# companion download_installer_file are both headless-safe and run here
+# like every other tool. scripts/New-SilentTestKit.ps1 — the sandboxed,
+# actually-runs-the-installer verification step these two only ever feed
+# a candidate into — is deliberately NOT wired in here: Windows Sandbox
+# opens a real interactive GUI window, which this runner (a Windows
+# service account, no interactive desktop session) cannot support. It's
+# a human, local, pre-merge check instead — see
+# docs/silent-switch-verification.md.
 
 on:
   issues:
@@ -129,10 +139,32 @@ jobs:
                silentArgs (it's a regex over a real script, not a
                guarantee — sanity-check it against the returned file text
                before trusting it).
-            3. Only if both of those find nothing, fall back to
+            3. If both of those find nothing and the form's source_url
+               points straight at a downloadable installer file, call
+               download_installer_file with it, then
+               get_installer_signals on the path it returns — an MSI's
+               real Property table, or an EXE's own embedded strings
+               (matched against known installer-framework fingerprints:
+               NSIS, Inno Setup, InstallShield, WiX Burn, InstallAware,
+               Squirrel, Advanced Installer) can surface a real
+               candidate switch straight from the file itself, not a
+               guess from the vendor name alone. Its CandidateSwitches
+               field is a starting point for that framework, not a
+               confirmed answer — say so plainly in the PR body (see
+               below) rather than presenting it as settled.
+            4. Only if none of the above find anything, fall back to
                search_silent_install_switch with the package name — it's
                a best-effort search of one snapshot page, so a miss
                doesn't mean no switch exists.
+
+            Whichever step above actually produced silent_args, note it
+            in the PR body: winget/get_community_package_tools results
+            came from a real, working source and can be trusted as-is;
+            a get_installer_signals result is only a framework-typical
+            guess and should say so explicitly, recommending a human
+            confirm it locally with scripts/New-SilentTestKit.ps1 (see
+            docs/silent-switch-verification.md) before this package's
+            switch is trusted unattended.
 
             Then call
             scaffold_internal_package with the package_id/owner_team/
@@ -181,7 +213,7 @@ jobs:
           claude -p $prompt `
             --mcp-config mcp-server/mcp-config.json `
             --strict-mcp-config `
-            --allowedTools "mcp__chocolatey-packages__search_community_package mcp__chocolatey-packages__bootstrap_internalize_package mcp__chocolatey-packages__scaffold_internal_package mcp__chocolatey-packages__lint_package mcp__chocolatey-packages__open_pull_request mcp__chocolatey-packages__search_evergreen_app mcp__chocolatey-packages__get_evergreen_app_info mcp__chocolatey-packages__search_silent_install_switch mcp__chocolatey-packages__lookup_package_knowledge mcp__chocolatey-packages__write_package_knowledge mcp__chocolatey-packages__get_community_package_tools mcp__chocolatey-packages__get_winget_package_manifest" `
+            --allowedTools "mcp__chocolatey-packages__search_community_package mcp__chocolatey-packages__bootstrap_internalize_package mcp__chocolatey-packages__scaffold_internal_package mcp__chocolatey-packages__lint_package mcp__chocolatey-packages__open_pull_request mcp__chocolatey-packages__search_evergreen_app mcp__chocolatey-packages__get_evergreen_app_info mcp__chocolatey-packages__search_silent_install_switch mcp__chocolatey-packages__lookup_package_knowledge mcp__chocolatey-packages__write_package_knowledge mcp__chocolatey-packages__get_community_package_tools mcp__chocolatey-packages__get_winget_package_manifest mcp__chocolatey-packages__download_installer_file mcp__chocolatey-packages__get_installer_signals" `
             --permission-mode bypassPermissions `
             --output-format json > agent_output.json
 
