@@ -245,10 +245,16 @@ jobs:
             themselves, and uploaded it to that path in Nexus — you never
             attempt to reach the vendor's real download page or any login
             for this package type. Call scaffold_internal_package with the
-            package_id/owner_team/notes/software_name/vendor_name from the
-            form plus all three nexus_generic_* fields verbatim — this
-            generates an au_GetLatest that reads the latest asset already
-            uploaded there instead of scraping a page. Do not attempt
+            package_id/owner_team/notes/software_name/vendor_name/
+            source_url from the form (source_url here is the vendor's own
+            product page for the nuspec's <projectUrl> — distinct from the
+            Nexus fields, which are where the binary actually lives; found
+            by testing that leaving it out entirely causes a real
+            `choco pack` failure later, since NuGet/Chocolatey rejects an
+            empty <projectUrl>) plus all three nexus_generic_* fields
+            verbatim — this generates an au_GetLatest that reads the
+            latest asset already uploaded there instead of scraping a
+            page. Do not attempt
             get_winget_package_manifest/get_community_package_tools/
             get_installer_signals/search_silent_install_switch for this
             type — there's no public installer file to analyze; silent_args

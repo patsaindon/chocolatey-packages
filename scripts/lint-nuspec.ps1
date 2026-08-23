@@ -78,6 +78,19 @@ if ($nuspecFiles.Count -eq 0) {
                 $violations.Add("<version>$($metadata.version)</version> is not a valid NuGet/Chocolatey version string.")
             }
 
+            # choco pack itself hard-fails on an empty <projectUrl>
+            # ("CHCR0001: The projectUrl element ... cannot be empty") --
+            # found by testing a real package-request run whose prompt
+            # instructions forgot to pass source_url through for the
+            # paywalled path, so scaffold_internal_package produced a
+            # structurally-valid-looking but pack-breaking nuspec that
+            # lint didn't catch until the real AU force-test failed in CI
+            # instead. Caught here now, at the same point every other
+            # required field already is.
+            if ([string]::IsNullOrWhiteSpace($metadata.projectUrl)) {
+                $violations.Add("<projectUrl> is missing or empty in $($nuspecFile.Name) -- choco pack fails outright on this.")
+            }
+
             # Promotion (Get-PromotionCandidates.ps1) reads dependency ids
             # straight from this element -- an empty id there would silently
             # break that recursive-include logic rather than fail loudly, so

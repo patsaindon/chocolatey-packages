@@ -399,7 +399,19 @@ export async function handler({
     [/<packageSourceUrl>CHANGE_ME<\/packageSourceUrl>/, `<packageSourceUrl>${packageSourceUrl}</packageSourceUrl>`],
     [/<description>CHANGE_ME<\/description>/, `<description>${description}</description>`],
     [/<tags>internal<\/tags>/, `<tags>${tags}</tags>`],
-    ...(effectiveProjectUrl ? [[/<projectUrl><\/projectUrl>/, `<projectUrl>${effectiveProjectUrl}</projectUrl>`]] : []),
+    // <projectUrl> specifically always gets *some* value, even when no
+    // real vendor page was found anywhere -- found by testing (a real
+    // package-request run for a paywalled package with no source_url
+    // passed) that `choco pack` hard-fails ("CHCR0001: The projectUrl
+    // element in the package nuspec file cannot be empty") long after
+    // scaffolding, in CI rather than at scaffold time. Falling back to
+    // this repo's own packageSourceUrl (always set, needs no input)
+    // guarantees `choco pack` never fails on this specifically -- it's
+    // not a substitute for a real vendor URL, just a safe placeholder
+    // that's honestly reported as such below, unlike effectiveProjectUrl
+    // itself (used elsewhere as a real scraping source), which stays
+    // null rather than silently claiming this fallback is a real source.
+    [/<projectUrl><\/projectUrl>/, `<projectUrl>${effectiveProjectUrl || packageSourceUrl}</projectUrl>`],
     ...(dependencies && dependencies.length > 0
       ? [[/<dependencies \/>/, buildDependenciesXml(dependencies)]]
       : []),
@@ -514,7 +526,7 @@ Get-ChocolateyWebFile @packageArgs
           authors: `${effectiveVendorName}${vendor_name ? " (explicit)" : appIndexEntry ? " (from evergreen's app index)" : " (fell back to owner_team — pass 'vendor_name' if this software has a different real publisher)"}`,
           projectUrl: effectiveProjectUrl
             ? `${effectiveProjectUrl}${source_url ? " (explicit)" : appIndexEntry ? " (from evergreen's app index)" : ` (from knowledge/${vendor}.yml)`}`
-            : "left empty — pass 'source_url', an evergreen_app_name with a homepage link, or record one in the knowledge base",
+            : `fell back to this package's own packageSourceUrl (${packageSourceUrl}) — not a real vendor page; pass 'source_url' for a real one`,
           tags,
         },
         dependencies:
