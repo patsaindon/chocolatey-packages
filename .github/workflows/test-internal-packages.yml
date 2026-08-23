@@ -56,10 +56,25 @@ jobs:
           # own $ThrowOnErrors is truthy — it defaults to unset/false, so a
           # real AU update error would otherwise leave this step green.
           # Found by testing: AU genuinely errored on a package here and
-          # the step still passed.
+          # the step still passed. That throw (an uncaught PowerShell
+          # exception) is what actually fails this step -- pwsh itself
+          # exits non-zero when a script-level exception propagates
+          # uncaught, no separate check needed.
+          #
+          # The `if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }` this line
+          # used to be followed by was itself a real bug, found by testing:
+          # $LASTEXITCODE is a single global reflecting whichever native
+          # command last ran *anywhere* in the process, however deeply
+          # nested (here: Grype, invoked deep inside the Nexus-mirror
+          # scan step) -- by the time control returns to this line, it can
+          # be $null (not 0) even after a fully successful run, and
+          # `$null -ne 0` is true in PowerShell. That silently failed this
+          # step on every genuinely successful run once the mirror step
+          # added a native call after which nothing else reset it, despite
+          # a real, correct .nupkg already having been built -- confirmed
+          # directly on the runner's own disk after a real "failed" run.
           $ThrowOnErrors = $true
           ./test_all.ps1 -Root .\internal\
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Show Nexus-mirror diagnostic log (if any package used it)
         # Found by testing a real CI run: AU's own output handling can lose
