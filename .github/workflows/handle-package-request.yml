@@ -329,7 +329,13 @@ jobs:
           $runId = $null
           for ($i = 0; $i -lt 10 -and -not $runId; $i++) {
             Start-Sleep -Seconds 3
-            $runId = gh run list --workflow=test-internal-packages.yml --branch=$branch --json databaseId,status --jq '[.[] | select(.status == "action_required" or .status == "waiting" or .status == "queued")][0].databaseId'
+            # 'action_required' is a *conclusion*, not a status -- GitHub
+            # only sets it once a run's own status is already 'completed'
+            # (it never actually executes; that's the whole point of the
+            # gate). Found by testing against a real stuck run: the
+            # original filter checked .status == 'action_required', which
+            # can never match, silently finding nothing every time.
+            $runId = gh run list --workflow=test-internal-packages.yml --branch=$branch --json databaseId,status,conclusion --jq '[.[] | select(.conclusion == "action_required" or .status == "waiting" or .status == "queued")][0].databaseId'
           }
 
           if ($runId) {
