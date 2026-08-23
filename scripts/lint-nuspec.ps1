@@ -77,6 +77,18 @@ if ($nuspecFiles.Count -eq 0) {
                 $metadata.version -notmatch '^\d+(\.\d+){1,3}(-[0-9A-Za-z.\-]+)?$') {
                 $violations.Add("<version>$($metadata.version)</version> is not a valid NuGet/Chocolatey version string.")
             }
+
+            # Promotion (Get-PromotionCandidates.ps1) reads dependency ids
+            # straight from this element -- an empty id there would silently
+            # break that recursive-include logic rather than fail loudly, so
+            # it's worth catching here instead.
+            $depNodes = @($metadata.dependencies.dependency)
+            foreach ($dep in $depNodes) {
+                if ($null -eq $dep) { continue }
+                if ([string]::IsNullOrWhiteSpace($dep.id)) {
+                    $violations.Add("$($nuspecFile.Name) has a <dependency> with no 'id' attribute.")
+                }
+            }
         }
     }
 }

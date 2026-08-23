@@ -10,6 +10,7 @@
     <packageSourceUrl>CHANGE_ME</packageSourceUrl>
     <description>CHANGE_ME</description>
     <tags>internal</tags>
+    <dependencies />
   </metadata>
   <files>
     <file src="tools\**" target="tools" />

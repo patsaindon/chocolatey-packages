@@ -70,6 +70,17 @@ export const config = {
       .string()
       .optional()
       .describe("Path prefix inside that repository under which every version of this package's binary gets uploaded, e.g. 'acme/licensed-app/'"),
+    dependencies: z
+      .array(
+        z.object({
+          id: z.string().describe("The dependency's own Chocolatey package id — must already exist in staging/production, e.g. from an earlier internalize/scaffold"),
+          version: z.string().optional().describe("Minimum version, e.g. '1.0.0' — omit for 'any version'"),
+        })
+      )
+      .optional()
+      .describe(
+        "Real package dependencies for the nuspec's <dependencies> element — e.g. this internal package needs a runtime that's itself packaged separately. Promotion (Get-PromotionCandidates.ps1) already reads this element and recursively includes missing dependencies when promoting a batch, so a real dependency declared here gets carried to production correctly instead of silently missing."
+      ),
   },
 };
 
@@ -84,6 +95,26 @@ function prettifyPackageId(packageId) {
     .filter(Boolean)
     .map((word) => (/^\d/.test(word) ? word : word[0].toUpperCase() + word.slice(1)))
     .join(" ");
+}
+
+/** Minimal XML attribute-value escaping -- dependency ids/versions are
+ * normally safe identifiers, but a stray '&'/'"' shouldn't be able to
+ * produce a malformed nuspec. */
+function escapeXmlAttr(value) {
+  return String(value).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
+/** Builds the <dependencies>...</dependencies> block Get-PromotionCandidates.ps1
+ * already knows how to read (package.metadata.dependencies.dependency[].id) --
+ * this is the write side of that same, already-tested shape. */
+function buildDependenciesXml(dependencies) {
+  const entries = dependencies
+    .map((dep) => {
+      const versionAttr = dep.version ? ` version="${escapeXmlAttr(dep.version)}"` : "";
+      return `      <dependency id="${escapeXmlAttr(dep.id)}"${versionAttr} />`;
+    })
+    .join("\n");
+  return `<dependencies>\n${entries}\n    </dependencies>`;
 }
 
 /** 'Adoptium Temurin 25' -> 'adoptium-temurin-25', for an extra nuspec tag. */
@@ -222,6 +253,7 @@ export async function handler({
   nexus_generic_base_url,
   nexus_generic_repository,
   nexus_generic_path_prefix,
+  dependencies,
 }) {
   const templateDir = path.join(REPO_ROOT, "internal", "_template");
   const targetDir = path.join(REPO_ROOT, "internal", package_id);
@@ -339,6 +371,9 @@ export async function handler({
     [/<description>CHANGE_ME<\/description>/, `<description>${description}</description>`],
     [/<tags>internal<\/tags>/, `<tags>${tags}</tags>`],
     ...(effectiveProjectUrl ? [[/<projectUrl><\/projectUrl>/, `<projectUrl>${effectiveProjectUrl}</projectUrl>`]] : []),
+    ...(dependencies && dependencies.length > 0
+      ? [[/<dependencies \/>/, buildDependenciesXml(dependencies)]]
+      : []),
   ]);
 
   await replaceInFile(path.join(targetDir, "metadata.yml"), [
@@ -393,6 +428,10 @@ export async function handler({
             : "left empty — pass 'source_url', an evergreen_app_name with a homepage link, or record one in the knowledge base",
           tags,
         },
+        dependencies:
+          dependencies && dependencies.length > 0
+            ? `${dependencies.map((d) => `${d.id}${d.version ? ` >= ${d.version}` : ""}`).join(", ")} — carried into the nuspec's <dependencies>, which promotion (Get-PromotionCandidates.ps1) already reads`
+            : "none declared",
         still_needs_manual_review: usedNexusGeneric
           ? "update.ps1's au_GetLatest reads from Nexus generic repo — confirm a human has actually uploaded a binary under the given path prefix, that NEXUS_GENERIC_READ_TOKEN (or equivalent) is configured wherever this package's AU update runs, and that this whole mechanism has been tested against the real Nexus instance at least once (it hasn't yet — see docs/architecture.md)."
           : "update.ps1's au_GetLatest — verify the architecture/version-matching logic (and the releases URL/regex, if not evergreen-seeded) against this vendor's real release page before merging.",
