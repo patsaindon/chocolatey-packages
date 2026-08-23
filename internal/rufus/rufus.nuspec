@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>rufus</id>
+    <version>0.0.0</version>
+    <title>Akeo Rufus</title>
+    <authors>Akeo Rufus</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://rufus.ie/</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/rufus</packageSourceUrl>
+    <description>Real end-to-end test using evergreen-api-tracked software, per the user's request to validate the pipeline with a few evergreen apps. Rufus is evergreen-tracked as "AkeoRufus". It publishes no x64 variant at all (only ARM64 and several x86 builds). Rufus itself is actually a single portable executable with no real installer/silent-install-switch concept in practice, despite evergreen's own data labeling its variants "Default" rather than "Portable" -- packaged here as portable.</description>
+    <tags>internal akeo-rufus</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
