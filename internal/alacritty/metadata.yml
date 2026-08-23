@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: alacritty
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Real end-to-end test using evergreen-api-tracked software, per the user's request to validate the pipeline with a few evergreen apps — deliberately picked to diversify beyond the JDK family (temurin17/temurin25) already tested. Alacritty publishes both a real .msi installer and a portable .exe side by side (InstallerType 'Default' vs 'Portable'); this package tracks the .msi installer."
