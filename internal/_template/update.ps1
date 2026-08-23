@@ -42,9 +42,11 @@ function global:au_BeforeUpdate($Package) {
         return
     }
     if ($global:Latest.URL32 -like "$($env:NEXUS_MIRROR_BASE_URL)*") {
+        Write-Host "[au_BeforeUpdate] $($Package.Name): URL32 already points at the Nexus mirror base -- skipping (already mirrored, e.g. a paywalled package)."
         return
     }
 
+    Write-Host "[au_BeforeUpdate] $($Package.Name): mirroring $($global:Latest.URL32) to Nexus"
     $mirrored = & (Join-Path $PSScriptRoot '..' '..' 'scripts' 'Publish-ToNexusGeneric.ps1') `
         -SourceUrl $global:Latest.URL32 `
         -PackageId $Package.Name `
@@ -54,6 +56,7 @@ function global:au_BeforeUpdate($Package) {
 
     $global:Latest.URL32 = $mirrored.Url
     $global:Latest.Checksum32 = $mirrored.Checksum
+    Write-Host "[au_BeforeUpdate] $($Package.Name): mirrored to $($mirrored.Url)"
 }
 
 function global:au_GetLatest {

@@ -73,8 +73,10 @@ function Invoke-VulnScan {
 
     $reportPath = [System.IO.Path]::GetTempFileName()
     try {
+        Write-Host "  Grype scan: $ExtractedDir"
         & grype "dir:$ExtractedDir" -o json --file $reportPath --fail-on $MinSeverity
         $grypeExitCode = $LASTEXITCODE
+        Write-Host "  Grype exit code: $grypeExitCode"
         $report = Get-Content $reportPath -Raw | ConvertFrom-Json
 
         $severityOrder = @('Negligible', 'Low', 'Medium', 'High', 'Critical')
