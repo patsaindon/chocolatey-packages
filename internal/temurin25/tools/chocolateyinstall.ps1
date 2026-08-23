@@ -7,12 +7,12 @@ $toolsPath = Split-Path $MyInvocation.MyCommand.Definition
 # package — do not fill them in by hand.
 $packageArgs = @{
   packageName    = 'temurin25'
-  fileType       = 'msi'                # adjust: exe / msi / msu
-  file           = ''
+  fileType       = 'msi'
+  url            = ''
   softwareName   = 'temurin25*'         # part of/whole software name, for uninstall registry lookup
   checksum       = ''
   checksumType   = 'sha256'
-  silentArgs     = '/qn /norestart'        # adjust for this installer's actual silent-install flag
+  silentArgs     = '/qn /norestart'
   validExitCodes = @(0)
 }
 
