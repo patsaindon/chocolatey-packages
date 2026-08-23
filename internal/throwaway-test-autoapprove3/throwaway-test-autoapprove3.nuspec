@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>throwaway-test-autoapprove3</id>
+    <version>0.0.0</version>
+    <title>Throwaway Test Autoapprove3</title>
+    <authors>Test</authors>
+    <owners>IT Operations</owners>
+    <projectUrl></projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/throwaway-test-autoapprove3</packageSourceUrl>
+    <description>THROWAWAY — final confirmation test of the FIXED auto-approve-CI-run step, with zero manual intervention this time. Will be closed and cleaned up immediately after confirming.</description>
+    <tags>internal test</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

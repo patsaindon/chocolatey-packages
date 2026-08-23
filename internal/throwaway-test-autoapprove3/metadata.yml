@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: throwaway-test-autoapprove3
+owner: IT Operations                  # owning team, drives notification routing
+notes: "THROWAWAY — final confirmation test of the FIXED auto-approve-CI-run step, with zero manual intervention this time. Will be closed and cleaned up immediately after confirming."
