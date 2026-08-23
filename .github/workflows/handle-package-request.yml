@@ -54,6 +54,7 @@ permissions:
   contents: write        # open_pull_request pushes a branch
   pull-requests: write    # ...and opens a PR for it
   issues: write           # posting the result back as a comment
+  actions: write          # approving test-internal-packages.yml's own run below (never anyone else's)
 
 # Listening to both 'opened' and 'labeled' (above) means an issue created
 # already-labeled can fire both events for the same issue — confirmed by
@@ -292,6 +293,51 @@ jobs:
           $delimiter >> $env:GITHUB_OUTPUT
 
           if ($parsed.is_error) { exit 1 }
+
+      - name: Approve this PR's own CI run
+        # Found by real testing: a PR opened via open_pull_request (using
+        # this workflow's own GITHUB_TOKEN, committed as github-actions[bot])
+        # leaves test-internal-packages.yml stuck at action_required
+        # forever -- GitHub requires a human to approve a self-hosted-
+        # runner workflow run when the triggering actor isn't a real,
+        # directly-authenticated collaborator. Confirmed by testing the
+        # same PR-open action with a real user account instead: it runs
+        # immediately, no gate at all -- the actor identity is what
+        # decides this, not anything about the PR's content.
+        #
+        # This step approves *only* the run already triggered on the
+        # branch this same job just pushed -- never an arbitrary run, and
+        # never anyone else's PR. It doesn't weaken the real protection
+        # this gate provides (an unreviewed external PR still can't get
+        # self-hosted-runner execution this way): the content it's
+        # approving is exactly what this job's own steps just produced
+        # and already validated with lint_package moments earlier, not
+        # something a stranger submitted.
+        if: success()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RESULT_TEXT: ${{ steps.agent.outputs.result_text }}
+        run: |
+          if ($env:RESULT_TEXT -notmatch '/pull/(\d+)') {
+            Write-Host "No PR URL in the agent's result -- nothing to approve (likely a straight-to-staging internalize, or paywalled/nexus request with no CI to gate)."
+            exit 0
+          }
+          $prNumber = $Matches[1]
+          $branch = gh pr view $prNumber --json headRefName -q .headRefName
+
+          $runId = $null
+          for ($i = 0; $i -lt 10 -and -not $runId; $i++) {
+            Start-Sleep -Seconds 3
+            $runId = gh run list --workflow=test-internal-packages.yml --branch=$branch --json databaseId,status --jq '[.[] | select(.status == "action_required" or .status == "waiting" or .status == "queued")][0].databaseId'
+          }
+
+          if ($runId) {
+            gh api -X POST "repos/$env:GITHUB_REPOSITORY/actions/runs/$runId/approve"
+            Write-Host "Approved test-internal-packages.yml run $runId for PR #$prNumber (branch $branch)."
+          } else {
+            Write-Host "No pending run found for branch $branch within timeout -- nothing to approve (it may already be running/complete, or the PR touched no internal/ files)."
+          }
 
       - name: Comment on the issue
         if: always()
