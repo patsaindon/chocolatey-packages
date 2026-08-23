@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>doxx</id>
+    <version>0.0.0</version>
+    <title>doxx</title>
+    <authors>Brandon Greenwell (bgreenwell)</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://github.com/bgreenwell/doxx/releases</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/doxx</packageSourceUrl>
+    <description>Terminal tool to view .docx files without Office. Ships a real Windows MSI (doxx-x86_64-pc-windows-msvc.msi) with a matching .sha256 checksum file on GitHub Releases. MIT licensed.</description>
+    <tags>internal brandon-greenwell-bgreenwell</tags>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
