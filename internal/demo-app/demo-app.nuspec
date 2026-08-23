@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>demo-app</id>
+    <version>0.0.0</version>
+    <title>Demo App</title>
+    <authors>Acme</authors>
+    <owners>IT Operations</owners>
+    <projectUrl></projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/demo-app</packageSourceUrl>
+    <description>Final real end-to-end test of the Nexus-generic paywalled mechanism, now that a real Nexus instance (Docker) is running and NEXUS_GENERIC_READ_TOKEN is configured as a repo secret. A real file has already been uploaded to this exact path (demo-app-2.0.0.exe). This should let test-internal-packages.yml's real AU force-test actually resolve version 2.0.0 from the real Nexus instance instead of failing on a placeholder.</description>
+    <tags>internal acme</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
