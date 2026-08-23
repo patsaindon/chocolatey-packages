@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>alacritty</id>
+    <version>0.0.0</version>
+    <title>Alacritty</title>
+    <authors>Alacritty</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://alacritty.org/</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/alacritty</packageSourceUrl>
+    <description>Real end-to-end test using evergreen-api-tracked software, per the user's request to validate the pipeline with a few evergreen apps — deliberately picked to diversify beyond the JDK family (temurin17/temurin25) already tested. Alacritty publishes both a real .msi installer and a portable .exe side by side (InstallerType 'Default' vs 'Portable'); this package tracks the .msi installer.</description>
+    <tags>internal</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
