@@ -71,6 +71,14 @@ function global:au_BeforeUpdate($Package) {
     au_BeforeUpdateLog "[au_BeforeUpdate] $($Package.Name): mirrored to $($mirrored.Url)"
 }
 
+function global:au_AfterUpdate($Package) {
+    # Diagnostic only -- confirms update_files (au_SearchReplace) completed
+    # before AU calls `choco pack`, to narrow down a real CI-only failure
+    # (Section 15) that happens somewhere after au_BeforeUpdate returns
+    # successfully but before any further AU output appears at all.
+    au_BeforeUpdateLog "[au_AfterUpdate] $($Package.Name): update_files completed, about to choco pack"
+}
+
 function global:au_GetLatest {
     # TODO: point this at wherever this internal software actually publishes
     # releases (an internal file share, artifact repo, or vendor page) and
