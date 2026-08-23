@@ -34,6 +34,13 @@ jobs:
 
       - name: Force-test internal packages (AU, no push)
         shell: pwsh
+        env:
+          # Only used by a package whose au_GetLatest reads from a Nexus
+          # generic repo (Section 6.8) -- read-only, scoped to that one
+          # repository (see docs/architecture.md's note on scoping
+          # anonymous read narrowly rather than granting it broadly).
+          # Packages that don't use that path never reference this var.
+          NEXUS_GENERIC_READ_TOKEN: ${{ secrets.NEXUS_GENERIC_READ_TOKEN }}
         run: |
           # test_all.ps1 only throws (failing this step) when the caller's
           # own $ThrowOnErrors is truthy — it defaults to unset/false, so a
