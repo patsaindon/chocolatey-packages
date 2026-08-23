@@ -55,6 +55,21 @@ export const config = {
       .string()
       .optional()
       .describe("Real silent-install switch, e.g. from search_silent_install_switch (falls back to a generic '/S' guess if omitted)"),
+    nexus_generic_base_url: z
+      .string()
+      .url()
+      .optional()
+      .describe(
+        "For paywalled software only: the Nexus base URL (e.g. 'https://nexus.internal') where a human has manually deposited the binary into a generic/raw-format hosted repository, because this automation must never hold the vendor login the real download needs. Requires nexus_generic_repository and nexus_generic_path_prefix too — all three together generate an au_GetLatest that reads the latest asset already uploaded there instead of scraping a vendor page. NOT YET VERIFIED AGAINST A REAL NEXUS INSTANCE — see docs/architecture.md."
+      ),
+    nexus_generic_repository: z
+      .string()
+      .optional()
+      .describe("The generic/raw-format repository name in Nexus holding this package's manually-uploaded binaries"),
+    nexus_generic_path_prefix: z
+      .string()
+      .optional()
+      .describe("Path prefix inside that repository under which every version of this package's binary gets uploaded, e.g. 'acme/licensed-app/'"),
   },
 };
 
@@ -160,6 +175,39 @@ async function buildEvergreenGetLatest(evergreenAppName, imageType) {
   return { code, imageType: preferred.ImageType };
 }
 
+/**
+ * Generates an au_GetLatest that reads the latest asset a human already
+ * uploaded to a Nexus generic (raw-format) hosted repository, instead of
+ * scraping a vendor page — for software behind a paywall/login this
+ * automation must never hold credentials for (same reasoning as every
+ * other credential-scoping decision in this repo). `scripts/Get-
+ * NexusGenericLatestAsset.ps1`'s own header has the full design rationale
+ * and its "not yet verified against a real Nexus" caveat, which the
+ * generated comment repeats so a human reviewing this specific package
+ * sees it too, not just whoever reads the shared script once.
+ */
+function buildNexusGenericGetLatest(baseUrl, repository, pathPrefix) {
+  return `function global:au_GetLatest {
+    # Sourced from a Nexus generic (raw-format) hosted repository, not a
+    # vendor page: this software is paywalled, so a human logs in,
+    # downloads a new release themselves, and uploads it to this fixed
+    # path whenever the vendor ships one — this automation never holds
+    # those vendor credentials, only reads what was already deposited.
+    # NOT YET VERIFIED AGAINST A REAL NEXUS INSTANCE — see
+    # docs/architecture.md and scripts/Get-NexusGenericLatestAsset.ps1's
+    # own header before trusting this in production.
+    $scriptPath = Join-Path $PSScriptRoot '..' '..' 'scripts' 'Get-NexusGenericLatestAsset.ps1'
+    $asset = & $scriptPath -NexusBaseUrl '${baseUrl}' -Repository '${repository}' -PathPrefix '${pathPrefix}'
+
+    return @{
+        URL32          = $asset.DownloadUrl
+        Version        = $asset.Version
+        Checksum32     = $asset.Sha256
+        ChecksumType32 = 'sha256'
+    }
+}`;
+}
+
 export async function handler({
   package_id,
   owner_team,
@@ -171,6 +219,9 @@ export async function handler({
   evergreen_app_name,
   evergreen_image_type,
   silent_args,
+  nexus_generic_base_url,
+  nexus_generic_repository,
+  nexus_generic_path_prefix,
 }) {
   const templateDir = path.join(REPO_ROOT, "internal", "_template");
   const targetDir = path.join(REPO_ROOT, "internal", package_id);
@@ -241,7 +292,21 @@ export async function handler({
   let usedEvergreen = false;
   let evergreenError = null;
   let evergreenImageType = null;
-  if (evergreen_app_name) {
+  const usedNexusGeneric = Boolean(
+    nexus_generic_base_url && nexus_generic_repository && nexus_generic_path_prefix
+  );
+  if (usedNexusGeneric) {
+    // Takes priority over evergreen_app_name if both were somehow given —
+    // an explicit Nexus path is a deliberate signal that this specific
+    // software's real releases aren't reachable any other way, which
+    // wouldn't be true of anything evergreen-api already tracks.
+    await replaceInFile(path.join(targetDir, "update.ps1"), [
+      [
+        /function global:au_GetLatest \{[\s\S]*?\n\}/,
+        buildNexusGenericGetLatest(nexus_generic_base_url, nexus_generic_repository, nexus_generic_path_prefix),
+      ],
+    ]);
+  } else if (evergreen_app_name) {
     try {
       const generated = await buildEvergreenGetLatest(evergreen_app_name, evergreen_image_type);
       if (generated) {
@@ -288,7 +353,7 @@ export async function handler({
     ...(effectiveSilentArgs ? [[/silentArgs\s*= '\/S'(\s*#[^\n]*)?/, `silentArgs     = '${effectiveSilentArgs}'`]] : []),
   ]);
 
-  if (!usedEvergreen) {
+  if (!usedEvergreen && !usedNexusGeneric) {
     await replaceInFile(path.join(targetDir, "update.ps1"), [
       ...(effectiveProjectUrl
         ? [[/\$releases = 'https:\/\/CHANGE_ME\/releases'/, `$releases = '${effectiveProjectUrl}'`]]
@@ -310,11 +375,13 @@ export async function handler({
           `internal/${package_id}/update.ps1`,
           `internal/${package_id}/tools/chocolateyinstall.ps1`,
         ],
-        au_get_latest_source: usedEvergreen
-          ? `seeded from evergreen-api ('${evergreen_app_name}')`
-          : evergreenError
-            ? `evergreen_app_name given but lookup failed (${evergreenError}) — fell back to the generic placeholder`
-            : "generic placeholder — no evergreen_app_name given",
+        au_get_latest_source: usedNexusGeneric
+          ? `reads the latest asset from Nexus generic repo '${nexus_generic_repository}' at '${nexus_generic_path_prefix}' (paywalled-software path — NOT yet verified against a real Nexus instance, see docs/architecture.md)`
+          : usedEvergreen
+            ? `seeded from evergreen-api ('${evergreen_app_name}')`
+            : evergreenError
+              ? `evergreen_app_name given but lookup failed (${evergreenError}) — fell back to the generic placeholder`
+              : "generic placeholder — no evergreen_app_name given",
         silent_args_source: effectiveSilentArgs
           ? `${effectiveSilentArgs}${silent_args ? " (explicit)" : ` (from knowledge/${vendor}.yml — write_package_knowledge if this turns out wrong or missing for the next package)`}`
           : "generic '/S' placeholder — no silent_args given and none recorded in the knowledge base for this vendor",
@@ -326,8 +393,9 @@ export async function handler({
             : "left empty — pass 'source_url', an evergreen_app_name with a homepage link, or record one in the knowledge base",
           tags,
         },
-        still_needs_manual_review:
-          "update.ps1's au_GetLatest — verify the architecture/version-matching logic (and the releases URL/regex, if not evergreen-seeded) against this vendor's real release page before merging.",
+        still_needs_manual_review: usedNexusGeneric
+          ? "update.ps1's au_GetLatest reads from Nexus generic repo — confirm a human has actually uploaded a binary under the given path prefix, that NEXUS_GENERIC_READ_TOKEN (or equivalent) is configured wherever this package's AU update runs, and that this whole mechanism has been tested against the real Nexus instance at least once (it hasn't yet — see docs/architecture.md)."
+          : "update.ps1's au_GetLatest — verify the architecture/version-matching logic (and the releases URL/regex, if not evergreen-seeded) against this vendor's real release page before merging.",
       },
       null,
       2

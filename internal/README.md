@@ -16,6 +16,8 @@ internal/<package-id>/
 
 To onboard a new internal package, copy [internal/_template/](_template/) to `internal/<your-package-id>/`, **rename `CHANGE_ME.nuspec` to `<your-package-id>.nuspec`** (filename *and* the `<id>` element inside, plus `metadata.yml`'s `packageId`), and fill in `update.ps1`'s `au_GetLatest` to point at wherever this software actually publishes releases. Run [scripts/lint-nuspec.ps1](../scripts/lint-nuspec.ps1) `-PackageDir` against it before opening a PR — it checks all of the above, plus catches any leftover `CHANGE_ME` placeholder.
 
+**When the software is paywalled** (a vendor login gates the real download, which this automation must never hold credentials for), `au_GetLatest` can instead read the latest binary a human already uploaded to a Nexus generic/raw-format hosted repository — see [scripts/Get-NexusGenericLatestAsset.ps1](../scripts/Get-NexusGenericLatestAsset.ps1) and `scaffold_internal_package`'s `nexus_generic_*` parameters ([mcp-server/README.md](../mcp-server/README.md)). Not yet verified against a real Nexus instance — see [docs/architecture.md § 6.8](../docs/architecture.md#68-mcp-server--agent-driven-package-creation).
+
 ## How updates happen
 
 - **On a PR** touching `internal/**`: [.github/workflows/test-internal-packages.yml](../.github/workflows/test-internal-packages.yml) lints the changed package(s) and force-tests them via AU's `test_all.ps1` — never pushes anywhere.

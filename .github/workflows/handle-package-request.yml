@@ -219,6 +219,30 @@ jobs:
             itself unattended — and, if you wrote a knowledge/ file, that
             the human reviewing this PR is also reviewing that update.
 
+          - "Internal (paywalled ...)": the form's Nexus fields
+            (nexus_generic_base_url/nexus_generic_repository/
+            nexus_generic_path_prefix) mean a human has already logged into
+            the vendor's own paywalled portal, downloaded the binary
+            themselves, and uploaded it to that path in Nexus — you never
+            attempt to reach the vendor's real download page or any login
+            for this package type. Call scaffold_internal_package with the
+            package_id/owner_team/notes/software_name/vendor_name from the
+            form plus all three nexus_generic_* fields verbatim — this
+            generates an au_GetLatest that reads the latest asset already
+            uploaded there instead of scraping a page. Do not attempt
+            get_winget_package_manifest/get_community_package_tools/
+            get_installer_signals/search_silent_install_switch for this
+            type — there's no public installer file to analyze; silent_args
+            stays the generic placeholder unless the form's Notes field
+            already states a known-correct switch. Call lint_package, then
+            open_pull_request the same way as the AU-based case, and say
+            explicitly in the PR body that this package's au_GetLatest
+            depends on a human continuing to manually re-upload each new
+            version to the same Nexus path, and that this mechanism has not
+            yet been verified end-to-end against a real Nexus instance
+            (see docs/architecture.md) — both need human acknowledgment
+            before this package is trusted.
+
           If anything fails (package not found, lint fails, tool error),
           stop and report the failure — do not retry with guessed values.
 

@@ -10,6 +10,7 @@ body:
       options:
         - Internalized (from the Chocolatey Community Repository)
         - Internal (AU-based — tracks a vendor's own release page)
+        - Internal (paywalled — binary manually deposited in Nexus, see Notes)
     validations:
       required: true
 
@@ -64,6 +65,38 @@ body:
       description: Who should be notified if this package needs attention later.
     validations:
       required: true
+
+  - type: input
+    id: nexus_generic_base_url
+    attributes:
+      label: Nexus base URL (paywalled packages only)
+      description: >
+        Only for "Internal (paywalled)" above. You've already logged into the
+        vendor's own portal, downloaded the binary yourself, and uploaded it
+        to a Nexus generic/raw-format hosted repository — this automation
+        never holds vendor login credentials. e.g. "https://nexus.internal".
+    validations:
+      required: false
+
+  - type: input
+    id: nexus_generic_repository
+    attributes:
+      label: Nexus generic repository name (paywalled packages only)
+      description: The generic/raw-format repository name holding the upload, e.g. "generic-hosted".
+    validations:
+      required: false
+
+  - type: input
+    id: nexus_generic_path_prefix
+    attributes:
+      label: Nexus path prefix (paywalled packages only)
+      description: >
+        Path prefix under which you'll upload every future version's binary
+        too, e.g. "acme/licensed-app/" — whenever the vendor ships an
+        update, log in, download it, and upload it here again; the package
+        picks up the newest one automatically from there.
+    validations:
+      required: false
 
   - type: textarea
     id: notes
