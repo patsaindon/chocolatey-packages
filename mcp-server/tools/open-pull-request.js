@@ -42,13 +42,23 @@ async function ensureGitIdentity() {
  * step failed (e.g. the repo's Actions PR-creation setting was off) leaves
  * a pushed branch behind with no PR for it. The next attempt's plain
  * `git checkout -b` then fails with "branch already exists". Handles both
- * cases: an existing PR for this branch is reported back as-is (idempotent
- * success, nothing to redo); a branch with no PR is machine-owned by
- * naming convention (package-request/<id>), so it's safe to drop and
- * recreate rather than fail the whole retry on stale state.
+ * cases: an existing *open* PR for this branch is reported back as-is
+ * (idempotent success, nothing to redo); a branch with no open PR is
+ * machine-owned by naming convention (package-request/<id>), so it's safe
+ * to drop and recreate rather than fail the whole retry on stale state.
+ *
+ * Only an OPEN PR short-circuits — found by testing a real retry after a
+ * genuine PR had been closed (not merged) for the same package id: the
+ * original version queried `--state all` and returned whichever PR it
+ * found first regardless of state, so a *closed* PR's stale URL got
+ * reported back as if a fresh PR had just been opened, even though the
+ * new attempt's actual fix was never reflected anywhere — the retry
+ * silently did nothing. A closed (abandoned/rejected) or merged
+ * (already-shipped) PR means there's genuinely nothing to reuse; falling
+ * through to the delete-and-recreate path below is correct for both.
  */
 async function reconcileExistingBranch(branch, base) {
-  const prList = await run("gh", ["pr", "list", "--head", branch, "--state", "all", "--json", "url,state"]);
+  const prList = await run("gh", ["pr", "list", "--head", branch, "--state", "open", "--json", "url"]);
   if (prList.code === 0 && prList.stdout.trim()) {
     const prs = JSON.parse(prList.stdout);
     if (prs.length > 0) {
@@ -99,18 +109,29 @@ export async function handler({ branch, title, body, files, base }) {
     }
   }
 
-  const pr = await run("gh", [
-    "pr",
-    "create",
-    "--base",
-    base,
-    "--head",
-    branch,
-    "--title",
-    title,
-    "--body",
-    body,
-  ]);
+  // Found by testing: gh pr create run immediately after the git push
+  // above can fail with "Head sha can't be blank ... No commits between
+  // undefined and <branch>" -- GitHub's API hadn't finished indexing the
+  // just-pushed branch yet. Retrying a moment later succeeds with no
+  // other change, confirming it's this timing gap and not a real
+  // problem with the branch/commit itself.
+  let pr;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    pr = await run("gh", [
+      "pr",
+      "create",
+      "--base",
+      base,
+      "--head",
+      branch,
+      "--title",
+      title,
+      "--body",
+      body,
+    ]);
+    if (pr.code === 0 || !/no commits between/i.test(pr.stderr || "")) break;
+    await new Promise((resolve) => setTimeout(resolve, 3000 * attempt));
+  }
 
   await run("git", ["checkout", base]).catch(() => {});
 
