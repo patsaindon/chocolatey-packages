@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>codegraphcontext</id>
+    <version>0.0.0</version>
+    <title>CodeGraphContext</title>
+    <authors>CodeGraphContext</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://github.com/CodeGraphContext/CodeGraphContext/releases</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/codegraphcontext</packageSourceUrl>
+    <description>An MCP server + CLI tool that indexes local code into a graph database for AI assistants (MIT licensed). Surfaced by prospect-packaging-opportunities.yml automated discovery (4,111 stars, no existing Chocolatey Community package found via choco search --exact).</description>
+    <tags>internal</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
