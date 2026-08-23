@@ -1,0 +1,15 @@
+# Facts learned about this vendor's packages while onboarding or
+# updating them -- checksum field names, image-type/architecture
+# defaults, version-format quirks, known-good silent-install switches.
+# Read by the package-request agent before scaffolding (see
+# lookup_package_knowledge) so an already-solved quirk isn't
+# rediscovered by trial and error on the next package from the same
+# vendor. Written only locally by write_package_knowledge -- a human
+# reviews every change here in the same PR as the package it came
+# from, never a silent agent write. See docs/architecture.md section 6.8.
+
+silent_args: /S
+source_url: "https://github.com/LaoFeng-mouse/flyingmouse-format/releases"
+notes: "Confirmed via real testing on human review (downloaded FlyingMouse-Format-Setup-0.6.4-x64.exe and ran `file` against it): a genuine Nullsoft/NSIS self-extracting installer ('PE32 executable (GUI) Intel 80386, for MS Windows, Nullsoft Installer self-extracting archive'), not a guess -- /S is NSIS's own standard silent switch. No winget, Community Repository, or evergreen-api coverage exists for this vendor. No public installer-signal tooling was available during the original scaffolding run (winget unavailable, no Community package to read), which is why this had to be confirmed by hand afterward instead. Ships two Windows x64 assets per release with inconsistent casing: 'FlyingMouse-Format-Setup-<version>-x64.exe' (the one this package tracks) and 'FlyingMouse.Format-Setup-<version>-win7-x64.exe' (a separate Windows-7-specific build, note the dot instead of a hyphen after the vendor name -- deliberately not tracked). au_GetLatest uses the GitHub Releases API (api.github.com/repos/LaoFeng-mouse/flyingmouse-format/releases/latest) directly; Version comes from the release's own tag_name (stripped of its leading 'v'), not the filename."
+last_verified_via: "flyingmouse-format package request (issue #32 / PR #33)"
+last_verified: 2026-08-23

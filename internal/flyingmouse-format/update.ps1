@@ -91,18 +91,23 @@ function global:au_AfterUpdate($Package) {
 }
 
 function global:au_GetLatest {
-    # TODO: point this at wherever this internal software actually publishes
-    # releases (an internal file share, artifact repo, or vendor page) and
-    # return at least URL32 + Version. See the AU README's "Public interface"
-    # section: https://github.com/majkinetor/AU#public-interface
-    $releases = 'https://github.com/LaoFeng-mouse/flyingmouse-format/releases'
-    $page = Invoke-WebRequest -Uri $releases -UseBasicParsing
+    # Real GitHub Releases API lookup, not a placeholder -- confirmed against
+    # the real releases page (tag v0.6.4). Two vendor quirks the placeholder
+    # regex didn't account for: the asset name is
+    # 'FlyingMouse-Format-Setup-<version>-x64.exe' (a '-Setup-...-x64' shape,
+    # not the bare '<id>-<version>.exe' the placeholder assumed), and the
+    # vendor also ships a second, differently-cased Windows-7-specific build
+    # ('FlyingMouse.Format-Setup-<version>-win7-x64.exe', note the dot) that
+    # this package deliberately does not track -- the regex below only
+    # matches the plain x64 asset.
+    $releases = 'https://api.github.com/repos/LaoFeng-mouse/flyingmouse-format/releases/latest'
+    $latest = Invoke-RestMethod -Uri $releases -UserAgent 'chocolatey-packages-mcp-server'
+    $asset = $latest.assets | Where-Object name -match '^FlyingMouse-Format-Setup-[\d.]+-x64\.exe$'
+    if (-not $asset) {
+        throw "No 'FlyingMouse-Format-Setup-<version>-x64.exe' asset found on flyingmouse-format's latest release ($($latest.tag_name)) -- did the vendor rename it?"
+    }
 
-    $re  = 'flyingmouse-format-(?<version>[\d.]+)\.exe'
-    $url = $page.Links | Where-Object href -match $re | Select-Object -First 1 -ExpandProperty href
-    $version = ($url -split '-' | Select-Object -Last 1) -replace '\.exe$'
-
-    return @{ URL32 = $url; Version = $version }
+    return @{ URL32 = $asset.browser_download_url; Version = $latest.tag_name -replace '^v' }
 }
 
-update -ChecksumFor none
+update -ChecksumFor 32

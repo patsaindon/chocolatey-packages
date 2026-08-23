@@ -12,7 +12,7 @@ $packageArgs = @{
   softwareName   = 'flyingmouse-format*'         # part of/whole software name, for uninstall registry lookup
   checksum       = ''
   checksumType   = 'sha256'
-  silentArgs     = '/S'                 # adjust for this installer's actual silent-install flag
+  silentArgs     = '/S'                 # NSIS's standard silent switch -- confirmed on human review, see knowledge/laofengmouse.yml
   validExitCodes = @(0)
 }
 
