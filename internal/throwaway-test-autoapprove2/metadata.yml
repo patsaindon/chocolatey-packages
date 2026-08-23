@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: throwaway-test-autoapprove2
+owner: IT Operations                  # owning team, drives notification routing
+notes: "THROWAWAY — real end-to-end test of the new auto-approve-CI-run step, using the paywalled path specifically because it skips all external discovery tools (winget/community/installer-signals) and reaches scaffold_internal_package + open_pull_request directly. This issue/PR will be closed and cleaned up immediately after confirming the mechanism works. Not a real package request."

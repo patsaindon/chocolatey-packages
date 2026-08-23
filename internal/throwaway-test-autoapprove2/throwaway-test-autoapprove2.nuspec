@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>throwaway-test-autoapprove2</id>
+    <version>0.0.0</version>
+    <title>Throwaway Test Package 2</title>
+    <authors>Test</authors>
+    <owners>IT Operations</owners>
+    <projectUrl></projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/throwaway-test-autoapprove2</packageSourceUrl>
+    <description>THROWAWAY — real end-to-end test of the new auto-approve-CI-run step, using the paywalled path specifically because it skips all external discovery tools (winget/community/installer-signals) and reaches scaffold_internal_package + open_pull_request directly. This issue/PR will be closed and cleaned up immediately after confirming the mechanism works. Not a real package request.</description>
+    <tags>internal test</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
