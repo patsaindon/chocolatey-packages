@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>flyingmouse-format</id>
+    <version>0.0.0</version>
+    <title>FlyingMouse Format</title>
+    <authors>LaoFeng-mouse</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://github.com/LaoFeng-mouse/flyingmouse-format/releases</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/flyingmouse-format</packageSourceUrl>
+    <description>Surfaced by prospect-packaging-opportunities.yml's automated discovery (real GitHub activity — 4,198 stars, created 2026-08-06, no existing Chocolatey Community package found via choco search flyingmouse-format --exact). Ships real Windows installer assets on its GitHub Releases page: FlyingMouse-Format-Setup-0.6.4-x64.exe and FlyingMouse.Format-Setup-0.6.4-win7-x64.exe. No confirmed silent-install switch found via winget, Community package lookup, or ManageEngine catalog search.</description>
+    <tags>internal laofeng-mouse</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
