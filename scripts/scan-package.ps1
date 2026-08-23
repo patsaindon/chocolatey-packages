@@ -54,7 +54,12 @@ function Invoke-AvScan {
     }
 
     Write-Host "  AV scan: $FilePath"
-    & $mpCmdRun -Scan -ScanType 3 -File $FilePath -DisableRemediation | Out-Null
+    # Same 2>&1 redirection as Invoke-VulnScan's grype call, and for the
+    # same reason: an unredirected stderr line from this native command
+    # would, under this script's own $ErrorActionPreference = 'Stop', be
+    # auto-promoted into an uncaught terminating exception regardless of
+    # MpCmdRun's actual exit code.
+    & $mpCmdRun -Scan -ScanType 3 -File $FilePath -DisableRemediation 2>&1 | Out-Null
     # Exit code 0 = clean, 2 = threat found. Anything else is an execution error.
     if ($LASTEXITCODE -eq 2) {
         return $false
@@ -74,8 +79,24 @@ function Invoke-VulnScan {
     $reportPath = [System.IO.Path]::GetTempFileName()
     try {
         Write-Host "  Grype scan: $ExtractedDir"
-        & grype "dir:$ExtractedDir" -o json --file $reportPath --fail-on $MinSeverity
+        # Explicitly redirects stderr (2>&1) rather than leaving it
+        # unredirected -- found by testing a real CI-only failure: with
+        # $ErrorActionPreference = 'Stop' (set at the top of this script),
+        # ANY unredirected stderr line from a native command (here: a
+        # benign syft/grype WARN, "no explicit name and version provided
+        # for directory source...", which this dir-based scan always
+        # triggers) is auto-wrapped by PowerShell into a non-terminating
+        # ErrorRecord and then promoted into an uncaught terminating
+        # exception -- independent of grype's own actual exit code. That
+        # killed the entire calling chain (au_BeforeUpdate's Nexus-mirror
+        # step, inside AU's own Start-Job) with no AU error message at all,
+        # since the exception never reached AU's own error handling.
+        # Redirecting merges stderr into this captured output instead,
+        # sidestepping that promotion entirely; each line is then just
+        # logged plainly below.
+        $grypeOutput = & grype "dir:$ExtractedDir" -o json --file $reportPath --fail-on $MinSeverity 2>&1
         $grypeExitCode = $LASTEXITCODE
+        $grypeOutput | ForEach-Object { Write-Host "  grype: $_" }
         Write-Host "  Grype exit code: $grypeExitCode"
         $report = Get-Content $reportPath -Raw | ConvertFrom-Json
 
