@@ -37,10 +37,44 @@ export async function fetchEvergreenVariants(name) {
  * since that's almost always what's actually wanted for a package named
  * after the runtime. Apps with no ImageType field at all (most of them)
  * are unaffected either way.
+ *
+ * Also filters by InstallerType vs. the requested packageKind ('installer'
+ * or 'portable') when both exist — found by testing against real evergreen
+ * data for Alacritty, which publishes *both* a real installer
+ * (InstallerType 'Default', an .msi) and a portable single-binary variant
+ * (InstallerType 'Portable', an .exe) side by side, with Portable listed
+ * *first*. Picking pool[0] blindly would hand an 'installer'-kind package
+ * (the default) a binary with no install wizard to silently run at all —
+ * the exact bug already found and fixed for CodeGraphContext via
+ * package_kind, resurfacing here through the evergreen path instead of a
+ * prospecting one. Most apps only publish one InstallerType, so this is a
+ * no-op for them.
  */
-export function pickPreferredVariant(variants, { imageType } = {}) {
-  const x64Variants = variants.filter((v) => v.Architecture?.toLowerCase() === "x64");
-  const pool = x64Variants.length > 0 ? x64Variants : variants;
+export function pickPreferredVariant(variants, { imageType, packageKind } = {}) {
+  // x64, then x86, then whatever's left -- found by testing against real
+  // data for Rufus, which publishes no x64 variant at all (only ARM64 and
+  // several x86 builds). The original fallback ("x64, else everything
+  // unfiltered") would silently hand back whichever variant happened to
+  // be listed first among ALL architectures once x64 was absent -- for
+  // Rufus that's the ARM64 build, which wouldn't run at all on the
+  // Intel/AMD endpoints the vast majority of a typical fleet actually
+  // has. x86 is the much safer broad-compatibility fallback (it runs
+  // everywhere x64 does too), so it's tried before falling through to
+  // whatever architecture-specific builds remain (ARM64 and similar).
+  let pool = variants;
+  for (const arch of ["x64", "x86"]) {
+    const matches = variants.filter((v) => v.Architecture?.toLowerCase() === arch);
+    if (matches.length > 0) {
+      pool = matches;
+      break;
+    }
+  }
+
+  const wantsPortable = packageKind === "portable";
+  const matchingKind = pool.filter((v) =>
+    wantsPortable ? v.InstallerType?.toLowerCase() === "portable" : v.InstallerType?.toLowerCase() !== "portable"
+  );
+  if (matchingKind.length > 0) pool = matchingKind;
 
   if (imageType) {
     const explicit = pool.find((v) => v.ImageType?.toLowerCase() === imageType.toLowerCase());

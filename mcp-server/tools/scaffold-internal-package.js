@@ -163,28 +163,36 @@ async function replaceInFile(filePath, replacements) {
  * { code, imageType } — imageType is surfaced too so the caller can add
  * it as a nuspec tag without a second, redundant variant fetch.
  */
-async function buildEvergreenGetLatest(evergreenAppName, imageType) {
+async function buildEvergreenGetLatest(evergreenAppName, imageType, packageKind) {
   const variants = await fetchEvergreenVariants(evergreenAppName);
-  const preferred = pickPreferredVariant(variants, { imageType });
+  const preferred = pickPreferredVariant(variants, { imageType, packageKind });
   if (!preferred) return null;
 
-  // The ImageType condition must be baked into the *generated* filter too,
-  // not just used to pick the seed file's initial content — otherwise
-  // every subsequent real au_GetLatest run hits the same jdk-vs-jre
-  // ambiguity this was written to solve, since evergreen still returns
-  // both variants every time. Found by testing against AdoptiumTemurin25,
-  // which has exactly two x64 variants with no other distinguishing field.
+  // Both conditions must be baked into the *generated* filter too, not
+  // just used to pick the seed file's initial content — otherwise every
+  // subsequent real au_GetLatest run hits the same ambiguity this was
+  // written to solve, since evergreen still returns every variant every
+  // time. ImageType: found by testing against AdoptiumTemurin25, which has
+  // exactly two x64 variants with no other distinguishing field.
+  // InstallerType: found by testing against Alacritty, which publishes
+  // both a real installer (.msi, InstallerType 'Default') and a portable
+  // single-binary variant (.exe, InstallerType 'Portable') side by side —
+  // without this, a future run could silently drift onto the wrong one
+  // the moment evergreen's own array order changes.
   const imageTypeCondition = preferred.ImageType
     ? ` -and $_.ImageType -eq '${preferred.ImageType}'`
+    : "";
+  const installerTypeCondition = preferred.InstallerType
+    ? ` -and $_.InstallerType -eq '${preferred.InstallerType}'`
     : "";
 
   const code = `function global:au_GetLatest {
     # Seeded from evergreen-api.stealthpuppy.com (https://eucpilots.com/evergreen/api/)
     # for '${evergreenAppName}' — verify the filter below still matches what
-    # this package actually wants to ship (was: Architecture=${preferred.Architecture ?? "unknown"}${preferred.ImageType ? `, ImageType=${preferred.ImageType}` : ""}).
+    # this package actually wants to ship (was: Architecture=${preferred.Architecture ?? "unknown"}${preferred.ImageType ? `, ImageType=${preferred.ImageType}` : ""}${preferred.InstallerType ? `, InstallerType=${preferred.InstallerType}` : ""}).
     $releases = "https://evergreen-api.stealthpuppy.com/app/${evergreenAppName}"
     $variants = Invoke-RestMethod -Uri $releases -UserAgent "chocolatey-packages-mcp-server"
-    $latest = $variants | Where-Object { $_.Architecture -eq '${preferred.Architecture ?? ""}'${imageTypeCondition} } | Select-Object -First 1
+    $latest = $variants | Where-Object { $_.Architecture -eq '${preferred.Architecture ?? ""}'${imageTypeCondition}${installerTypeCondition} } | Select-Object -First 1
     if (-not $latest) { throw "No matching evergreen-api variant found for ${evergreenAppName}." }
 
     # The checksum field name varies per app — found by testing: 7zip uses
@@ -215,7 +223,7 @@ async function buildEvergreenGetLatest(evergreenAppName, imageType) {
     }
 }`;
 
-  return { code, imageType: preferred.ImageType };
+  return { code, imageType: preferred.ImageType, fileType: preferred.Type };
 }
 
 /**
@@ -339,6 +347,7 @@ export async function handler({
   let usedEvergreen = false;
   let evergreenError = null;
   let evergreenImageType = null;
+  let evergreenFileType = null;
   const usedNexusGeneric = Boolean(
     nexus_generic_base_url && nexus_generic_repository && nexus_generic_path_prefix
   );
@@ -355,13 +364,14 @@ export async function handler({
     ]);
   } else if (evergreen_app_name) {
     try {
-      const generated = await buildEvergreenGetLatest(evergreen_app_name, evergreen_image_type);
+      const generated = await buildEvergreenGetLatest(evergreen_app_name, evergreen_image_type, effectivePackageKind);
       if (generated) {
         await replaceInFile(path.join(targetDir, "update.ps1"), [
           [/function global:au_GetLatest \{[\s\S]*?\n\}/, generated.code],
         ]);
         usedEvergreen = true;
         evergreenImageType = generated.imageType ?? null;
+        evergreenFileType = generated.fileType ?? null;
       }
     } catch (err) {
       evergreenError = err.message;
@@ -434,10 +444,24 @@ Get-ChocolateyWebFile @packageArgs
       "utf8"
     );
   } else {
+    // fileType/a sensible silentArgs default both need to match whichever
+    // file evergreen actually selected (Section 6.8) -- found by testing
+    // against a real app (Alacritty) whose preferred variant is an .msi:
+    // the template's own fileType='exe'/silentArgs='/S' defaults are both
+    // wrong for an MSI (msiexec, not a silent-switch-driven EXE), and
+    // nothing was propagating the real Type before this fix, silently
+    // generating a package that would try to run an MSI as if it were a
+    // self-silencing EXE installer.
+    const msiDefaultSilentArgs = evergreenFileType === "msi" ? "/qn /norestart" : null;
+    const finalSilentArgs = effectiveSilentArgs || msiDefaultSilentArgs;
+
     await replaceInFile(path.join(targetDir, "tools", "chocolateyinstall.ps1"), [
       [/packageName\s*= 'CHANGE_ME'/, `packageName    = '${package_id}'`],
       [/softwareName\s*= 'CHANGE_ME\*'/, `softwareName   = '${package_id}*'`],
-      ...(effectiveSilentArgs ? [[/silentArgs\s*= '\/S'(\s*#[^\n]*)?/, `silentArgs     = '${effectiveSilentArgs}'`]] : []),
+      ...(evergreenFileType && evergreenFileType !== "exe"
+        ? [[/fileType\s*= 'exe'(\s*#[^\n]*)?/, `fileType       = '${evergreenFileType}'`]]
+        : []),
+      ...(finalSilentArgs ? [[/silentArgs\s*= '\/S'(\s*#[^\n]*)?/, `silentArgs     = '${finalSilentArgs}'`]] : []),
     ]);
   }
 
@@ -472,12 +496,15 @@ Get-ChocolateyWebFile @packageArgs
               : "generic placeholder — no evergreen_app_name given",
         package_kind: effectivePackageKind,
         binary_name: effectivePackageKind === "portable" ? effectiveBinaryName : undefined,
+        file_type: effectivePackageKind === "portable" ? undefined : evergreenFileType || "exe (default)",
         silent_args_source:
           effectivePackageKind === "portable"
             ? "not applicable — portable binary, no installer to run silently, tools/chocolateyinstall.ps1 uses Get-ChocolateyWebFile instead of Install-ChocolateyPackage"
             : effectiveSilentArgs
               ? `${effectiveSilentArgs}${silent_args ? " (explicit)" : ` (from knowledge/${vendor}.yml — write_package_knowledge if this turns out wrong or missing for the next package)`}`
-              : "generic '/S' placeholder — no silent_args given and none recorded in the knowledge base for this vendor",
+              : evergreenFileType === "msi"
+                ? "/qn /norestart (standard MSI default — evergreen's selected variant is an .msi; still verify locally before trusting)"
+                : "generic '/S' placeholder — no silent_args given and none recorded in the knowledge base for this vendor",
         nuspec: {
           title: `${effectiveTitle}${title ? " (explicit)" : appIndexEntry ? " (from evergreen's app index)" : " (prettified package_id — pass 'title' explicitly if this doesn't read naturally)"}`,
           authors: `${effectiveVendorName}${vendor_name ? " (explicit)" : appIndexEntry ? " (from evergreen's app index)" : " (fell back to owner_team — pass 'vendor_name' if this software has a different real publisher)"}`,
