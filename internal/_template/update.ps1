@@ -16,6 +16,46 @@ function global:au_SearchReplace {
     }
 }
 
+function global:au_BeforeUpdate($Package) {
+    # Mirrors the real binary au_GetLatest just resolved into Nexus generic
+    # (raw-format) hosted storage *before* au_SearchReplace writes anything
+    # above into chocolateyinstall.ps1 -- deliberately not Chocolatey's own
+    # Package Internalizer (`choco download --internalize`), which embeds a
+    # license check every consuming endpoint would then need a Chocolatey
+    # Business/MSP license to satisfy, confirmed by inspecting a real
+    # internalized package's own script. See docs/architecture.md section
+    # 15 ("generalizing the Nexus-mirror step") for the full rationale, and
+    # scripts/Publish-ToNexusGeneric.ps1 for what this actually does
+    # (download, scan, upload) -- this function only ever overwrites
+    # $Latest's own URL32/Checksum32 with what that script returns, so
+    # au_SearchReplace above needs no changes at all.
+    #
+    # Skipped, not a hard failure, when NEXUS_MIRROR_BASE_URL isn't set --
+    # keeps this optional for an ad-hoc local run that hasn't configured
+    # it; every real workflow in this repo does. Also skipped if the URL
+    # already points at this same Nexus base (e.g. a paywalled package,
+    # whose own au_GetLatest already reads straight from Nexus) -- mirroring
+    # an already-mirrored file would be pointless and would need write
+    # credentials that package type never otherwise needs.
+    if (-not $env:NEXUS_MIRROR_BASE_URL) {
+        Write-Warning "NEXUS_MIRROR_BASE_URL not set -- skipping the Nexus mirror step; $($Package.Name) will keep referencing its real vendor URL directly."
+        return
+    }
+    if ($global:Latest.URL32 -like "$($env:NEXUS_MIRROR_BASE_URL)*") {
+        return
+    }
+
+    $mirrored = & (Join-Path $PSScriptRoot '..' '..' 'scripts' 'Publish-ToNexusGeneric.ps1') `
+        -SourceUrl $global:Latest.URL32 `
+        -PackageId $Package.Name `
+        -Version $global:Latest.Version `
+        -NexusBaseUrl $env:NEXUS_MIRROR_BASE_URL `
+        -Repository $env:NEXUS_MIRROR_REPOSITORY
+
+    $global:Latest.URL32 = $mirrored.Url
+    $global:Latest.Checksum32 = $mirrored.Checksum
+}
+
 function global:au_GetLatest {
     # TODO: point this at wherever this internal software actually publishes
     # releases (an internal file share, artifact repo, or vendor page) and

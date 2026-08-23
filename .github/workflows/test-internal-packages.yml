@@ -41,6 +41,16 @@ jobs:
           # anonymous read narrowly rather than granting it broadly).
           # Packages that don't use that path never reference this var.
           NEXUS_GENERIC_READ_TOKEN: ${{ secrets.NEXUS_GENERIC_READ_TOKEN }}
+          # Every other internal package's own au_BeforeUpdate hook
+          # (internal/_template/update.ps1, Section 15) mirrors its real
+          # binary into Nexus before this force-test even packs it --
+          # write-scoped to just this one repository (a dedicated
+          # 'au-mirror' user, never admin or the read-only credential
+          # above), so this force-test genuinely exercises the same
+          # mirror-then-scan-then-repoint path production runs.
+          NEXUS_MIRROR_BASE_URL: ${{ secrets.NEXUS_MIRROR_BASE_URL }}
+          NEXUS_MIRROR_REPOSITORY: ${{ secrets.NEXUS_MIRROR_REPOSITORY }}
+          NEXUS_GENERIC_WRITE_TOKEN: ${{ secrets.NEXUS_GENERIC_WRITE_TOKEN }}
         run: |
           # test_all.ps1 only throws (failing this step) when the caller's
           # own $ThrowOnErrors is truthy — it defaults to unset/false, so a

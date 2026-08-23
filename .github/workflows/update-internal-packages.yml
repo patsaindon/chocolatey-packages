@@ -1,12 +1,19 @@
 name: Update Internal Packages
 # AU-based update of every internal/<id>/ package — see internal/README.md
-# and docs/architecture.md section 9.3. AU's own job is only to detect a
-# new version and produce a package locally (Push disabled) — internalizing
-# it (so nothing that reaches staging still depends on external network
-# access) is left entirely to choco's own --internalize, run as a separate
-# step against that local package, per the user's explicit direction.
-# Promotion to production still goes through the separate,
-# environment-gated promote-package.yml.
+# and docs/architecture.md sections 9.3 and 15. AU itself detects a new
+# version, mirrors the real vendor binary into Nexus generic storage (each
+# package's own au_BeforeUpdate hook, scanning it first), and packs locally
+# (Push disabled) — the resulting package already only ever references
+# Nexus, so it's pushed to staging directly. Promotion to production still
+# goes through the separate, environment-gated promote-package.yml.
+#
+# This deliberately does NOT use Chocolatey's own Package Internalizer
+# (`choco download --internalize`), which an earlier version of this
+# workflow did use — found by testing a real internalized package that it
+# embeds a hard license check (Invoke-ValidateChocolateyLicense) requiring
+# every consuming endpoint to itself hold a Chocolatey Business/MSP
+# license. The Nexus-mirror approach only needs a plain HTTP GET at
+# install time, no Chocolatey licensing dependency for endpoints at all.
 
 on:
   schedule:
@@ -29,13 +36,17 @@ jobs:
           }
           if ($failed) { exit 1 }
 
-      - name: Update internal packages (AU, pack only — no push)
+      - name: Update internal packages (AU — mirror to Nexus, pack only, no push)
         shell: pwsh
+        env:
+          NEXUS_MIRROR_BASE_URL: ${{ secrets.NEXUS_MIRROR_BASE_URL }}
+          NEXUS_MIRROR_REPOSITORY: ${{ secrets.NEXUS_MIRROR_REPOSITORY }}
+          NEXUS_GENERIC_WRITE_TOKEN: ${{ secrets.NEXUS_GENERIC_WRITE_TOKEN }}
         run: |
           # au_Push is intentionally NOT set to 'true' here — AU packs
-          # locally (into internal/<id>/*.nupkg) but never pushes anywhere.
-          # The next step internalizes that local package before anything
-          # reaches a shared feed.
+          # locally (into internal/<id>/*.nupkg) but never pushes anywhere;
+          # the next step pushes those already-Nexus-referencing packages
+          # directly.
           #
           # update_all.ps1's own throw-on-error line is commented out by
           # default (same class of gap as test_all.ps1's $ThrowOnErrors —
@@ -49,13 +60,34 @@ jobs:
             exit 1
           }
 
-      - name: Internalize and push updated packages
+      - name: Push updated (Nexus-mirrored) packages to staging
         shell: pwsh
         env:
           STAGING_FEED_URL: ${{ secrets.STAGING_FEED_URL }}
           STAGING_API_KEY: ${{ secrets.STAGING_API_KEY }}
         run: |
-          ./scripts/Internalize-InternalPackages.ps1 -Verbose `
-            -InternalDir .\internal\ `
-            -StagingRepo $env:STAGING_FEED_URL `
-            -StagingApiKey $env:STAGING_API_KEY
+          # Each package AU just packed already references its own
+          # Nexus-mirrored binary (au_BeforeUpdate, scanned before ever
+          # being mirrored) rather than the vendor's live URL -- nothing
+          # left to internalize, so this pushes them to staging as-is.
+          $nupkgs = Get-ChildItem .\internal\ -Recurse -Filter '*.nupkg' -File |
+            Where-Object { $_.DirectoryName -notlike '*\_template*' -and $_.DirectoryName -notlike '*/_template*' }
+          if ($nupkgs.Count -eq 0) {
+            Write-Host "No packages were packed by update_all.ps1 -- nothing to push."
+            exit 0
+          }
+
+          $failed = $false
+          foreach ($nupkg in $nupkgs) {
+            choco push $nupkg.FullName --source=$env:STAGING_FEED_URL --api-key=$env:STAGING_API_KEY
+            if ($LASTEXITCODE -ne 0) {
+              Write-Warning "Push of '$($nupkg.Name)' to staging failed (exit $LASTEXITCODE)."
+              $failed = $true
+            } else {
+              Write-Host "Pushed '$($nupkg.Name)' to staging."
+            }
+            # The packed nupkg is a transient local build artifact either
+            # way — not something to keep around or accidentally commit.
+            Remove-Item $nupkg.FullName -Force -ErrorAction SilentlyContinue
+          }
+          if ($failed) { exit 1 }

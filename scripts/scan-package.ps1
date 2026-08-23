@@ -1,7 +1,17 @@
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName = 'PackageDir')]
 param(
-    [Parameter(Mandatory)]
+    [Parameter(Mandatory, ParameterSetName = 'PackageDir')]
     [string]$PackagePath,
+
+    # Scans one raw, not-yet-packaged file directly (e.g. an installer
+    # just downloaded from a vendor, before it's mirrored to Nexus --
+    # Section 15's Nexus-mirror generalization) instead of a directory of
+    # already-built .nupkg files. Added because the existing nupkg mode
+    # only ever sees what a nupkg embeds; a "thin" AU-packed nupkg that
+    # just references a URL has nothing real for Grype to scan at all --
+    # the actual binary has to be scanned before it becomes a package.
+    [Parameter(Mandatory, ParameterSetName = 'RawFile')]
+    [string]$RawFilePath,
 
     # Grype severities: Negligible, Low, Medium, High, Critical.
     # Any match at or above this severity fails the scan.
@@ -86,12 +96,48 @@ function Invoke-VulnScan {
     }
 }
 
+$failed = $false
+
+if ($PSCmdlet.ParameterSetName -eq 'RawFile') {
+    if (-not (Test-Path -LiteralPath $RawFilePath -PathType Leaf)) {
+        throw "No such file: $RawFilePath"
+    }
+    $rawFile = Get-Item -LiteralPath $RawFilePath
+    Write-Host "Scanning $($rawFile.Name) (raw file)..."
+
+    if (-not (Invoke-AvScan -FilePath $rawFile.FullName)) {
+        Write-Host "  FAIL: AV threat detected in $($rawFile.Name)"
+        $failed = $true
+    } else {
+        # Grype scans a whole directory's contents -- copied into its own
+        # isolated temp folder first so a caller's file sitting alongside
+        # unrelated files (e.g. a busy Downloads folder) doesn't get every
+        # one of those neighbors scanned and reported on too.
+        $isolatedDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+        New-Item -ItemType Directory -Path $isolatedDir | Out-Null
+        try {
+            Copy-Item $rawFile.FullName -Destination $isolatedDir
+            if (-not (Invoke-VulnScan -ExtractedDir $isolatedDir)) {
+                Write-Host "  FAIL: vulnerability at or above '$MinSeverity' found in $($rawFile.Name)"
+                $failed = $true
+            }
+        } finally {
+            Remove-Item $isolatedDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    if ($failed) {
+        Write-Error "Scan failed for $RawFilePath. See output above."
+        exit 1
+    }
+    Write-Host "$($rawFile.Name) passed AV + vulnerability (>= $MinSeverity) scanning."
+    exit 0
+}
+
 $packages = Get-ChildItem -Path $PackagePath -Filter '*.nupkg' -File
 if (-not $packages) {
     throw "No .nupkg files found under $PackagePath"
 }
-
-$failed = $false
 
 foreach ($pkg in $packages) {
     Write-Host "Scanning $($pkg.Name)..."
