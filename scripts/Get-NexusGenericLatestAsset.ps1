@@ -18,12 +18,18 @@ param(
     [string]
     $PathPrefix,
 
-    # Falls back to NEXUS_GENERIC_READ_TOKEN from the environment, the same
-    # pattern as GH_TOKEN/GITHUB_TOKEN elsewhere in this repo -- a
-    # read-only credential scoped to this one generic repo, never the
-    # write access the human's own manual upload uses.
+    # 'username:password' (or a Nexus User Token's 'tokenName:tokenPass'
+    # pair, Nexus's own recommended alternative to a real login password --
+    # Server Administration > Security > User Tokens) -- Nexus's REST API
+    # authenticates via HTTP Basic auth, confirmed against a real instance
+    # (see the header note below); this string is base64-encoded into that
+    # header, never sent as a bearer token. Falls back to
+    # NEXUS_GENERIC_READ_TOKEN from the environment, the same pattern as
+    # GH_TOKEN/GITHUB_TOKEN elsewhere in this repo -- a read-only
+    # credential scoped to this one generic repo, never the write access
+    # the human's own manual upload uses.
     [string]
-    $ApiToken = $env:NEXUS_GENERIC_READ_TOKEN
+    $Credentials = $env:NEXUS_GENERIC_READ_TOKEN
 )
 
 # The AU update source for a package whose real binary is paywalled --
@@ -37,16 +43,25 @@ param(
 # appeared at this path" as the version signal instead of "the vendor's
 # page says a new version exists."
 #
-# NOT YET VERIFIED AGAINST A REAL NEXUS INSTANCE -- unlike every other
-# script in this repo, there was no real Nexus (or Nexus-compatible
-# generic/raw endpoint) available to test this against end-to-end. The
-# response-parsing logic (Select-LatestNexusAsset) is unit-tested against
-# a synthetic fixture built from Sonatype's own documented Search Assets
-# API schema; the HTTP call itself (auth header shape, the real
-# reachability of /service/rest/v1/search/assets, and Nexus's actual
-# per-format search behavior for raw repos) is not. Treat this as a
-# reviewed design, not a proven one, until it's run against a real
-# instance -- see docs/architecture.md.
+# VERIFIED AGAINST A REAL NEXUS INSTANCE (Sonatype's own sonatype/nexus3
+# Docker image) -- this caught two real bugs the synthetic-fixture-only
+# testing had missed entirely:
+#   1. Real auth is HTTP Basic, not Bearer. The original version sent
+#      'Authorization: Bearer <token>' -- Nexus didn't reject it, it just
+#      silently ignored it and returned an authenticated-as-anonymous,
+#      EMPTY result set (HTTP 200, zero items), which this script would
+#      then report as "no asset found" -- indistinguishable from a
+#      genuinely empty repository. A wrong header that fails loudly is a
+#      minor annoyance; one that fails silently and looks like "nothing's
+#      there yet" is far worse, and would have made this whole mechanism
+#      quietly non-functional in real use.
+#   2. A real asset's own 'path' field comes back with a *leading slash*
+#      ('/acme/test-app/file.exe'), which the synthetic fixture (built by
+#      hand from Sonatype's documented schema, not from a real response)
+#      hadn't included -- so the path-prefix filter below would have
+#      matched nothing real, ever, despite working perfectly against the
+#      fixture. Both fixed below; see Select-LatestNexusAsset's own
+#      normalization and Get-NexusSearchAssetsHeaders' Basic-auth header.
 
 $ErrorActionPreference = 'Stop'
 
@@ -86,8 +101,14 @@ function Select-LatestNexusAsset {
         [Parameter(Mandatory)] [array]$Items,
         [Parameter(Mandatory)] [string]$PathPrefix
     )
+    # A real asset's path comes back leading-slashed ('/acme/app/x.exe');
+    # PathPrefix is documented and passed without one ('acme/app/') --
+    # normalize both the same way before comparing so this doesn't depend
+    # on the caller happening to match Nexus's own convention.
+    $normalizedPrefix = $PathPrefix.TrimStart('/')
     $candidates = foreach ($item in $Items) {
-        if ($item.path -notlike "$PathPrefix*") { continue }
+        $normalizedPath = $item.path.TrimStart('/')
+        if ($normalizedPath -notlike "$normalizedPrefix*") { continue }
         $fileName = Split-Path -Leaf $item.path
         $version = Get-VersionFromFileName -FileName $fileName
         if (-not $version) { continue }
@@ -110,13 +131,16 @@ function Select-LatestNexusAsset {
 }
 
 function Get-NexusSearchAssetsHeaders {
-    param([string]$Token)
+    param([string]$Credentials)
     $headers = @{}
-    if ($Token) { $headers['Authorization'] = "Bearer $Token" }
+    if ($Credentials) {
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($Credentials)
+        $headers['Authorization'] = "Basic $([Convert]::ToBase64String($bytes))"
+    }
     return $headers
 }
 
-$headers = Get-NexusSearchAssetsHeaders -Token $ApiToken
+$headers = Get-NexusSearchAssetsHeaders -Credentials $Credentials
 $allItems = New-Object System.Collections.Generic.List[object]
 $continuationToken = $null
 

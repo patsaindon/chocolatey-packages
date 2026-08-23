@@ -257,10 +257,11 @@ jobs:
             open_pull_request the same way as the AU-based case, and say
             explicitly in the PR body that this package's au_GetLatest
             depends on a human continuing to manually re-upload each new
-            version to the same Nexus path, and that this mechanism has not
-            yet been verified end-to-end against a real Nexus instance
-            (see docs/architecture.md) — both need human acknowledgment
-            before this package is trusted.
+            version to the same Nexus path, and that the target repository
+            needs to be readable by whatever downloads the file at install
+            time (see docs/architecture.md's note on scoping anonymous
+            read to just that one repository) — both need human
+            acknowledgment before this package is trusted.
 
           If anything fails (package not found, lint fails, tool error),
           stop and report the failure — do not retry with guessed values.

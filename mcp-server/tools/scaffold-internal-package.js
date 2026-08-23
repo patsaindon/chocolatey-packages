@@ -72,7 +72,7 @@ export const config = {
       .url()
       .optional()
       .describe(
-        "For paywalled software only: the Nexus base URL (e.g. 'https://nexus.internal') where a human has manually deposited the binary into a generic/raw-format hosted repository, because this automation must never hold the vendor login the real download needs. Requires nexus_generic_repository and nexus_generic_path_prefix too — all three together generate an au_GetLatest that reads the latest asset already uploaded there instead of scraping a vendor page. NOT YET VERIFIED AGAINST A REAL NEXUS INSTANCE — see docs/architecture.md."
+        "For paywalled software only: the Nexus base URL (e.g. 'https://nexus.internal') where a human has manually deposited the binary into a generic/raw-format hosted repository, because this automation must never hold the vendor login the real download needs. Requires nexus_generic_repository and nexus_generic_path_prefix too — all three together generate an au_GetLatest that reads the latest asset already uploaded there instead of scraping a vendor page. Verified end-to-end against a real Nexus instance — see docs/architecture.md. Note the Nexus-side requirement this testing surfaced: the generated au_GetLatest's download step needs the target repository to be readable by whatever runs it (anonymous read scoped to just that repository, not Nexus's broader default, is the tested approach — see docs/architecture.md)."
       ),
     nexus_generic_repository: z
       .string()
@@ -233,9 +233,9 @@ async function buildEvergreenGetLatest(evergreenAppName, imageType, packageKind)
  * automation must never hold credentials for (same reasoning as every
  * other credential-scoping decision in this repo). `scripts/Get-
  * NexusGenericLatestAsset.ps1`'s own header has the full design rationale
- * and its "not yet verified against a real Nexus" caveat, which the
- * generated comment repeats so a human reviewing this specific package
- * sees it too, not just whoever reads the shared script once.
+ * and its real-Nexus verification notes, which the generated comment
+ * repeats so a human reviewing this specific package sees them too, not
+ * just whoever reads the shared script once.
  */
 function buildNexusGenericGetLatest(baseUrl, repository, pathPrefix) {
   return `function global:au_GetLatest {
@@ -244,9 +244,13 @@ function buildNexusGenericGetLatest(baseUrl, repository, pathPrefix) {
     # downloads a new release themselves, and uploads it to this fixed
     # path whenever the vendor ships one — this automation never holds
     # those vendor credentials, only reads what was already deposited.
-    # NOT YET VERIFIED AGAINST A REAL NEXUS INSTANCE — see
-    # docs/architecture.md and scripts/Get-NexusGenericLatestAsset.ps1's
-    # own header before trusting this in production.
+    # Verified against a real Nexus instance (docs/architecture.md) —
+    # NEXUS_GENERIC_READ_TOKEN must be set wherever this runs (a
+    # 'username:password' or Nexus User Token pair), and the target
+    # repository needs to be readable by whatever downloads the file this
+    # returns (Get-ChocolateyWebFile has no credential of its own to send
+    # — see docs/architecture.md's note on scoping anonymous read to just
+    # this one repository, not Nexus's broader default).
     $scriptPath = Join-Path $PSScriptRoot '..' '..' 'scripts' 'Get-NexusGenericLatestAsset.ps1'
     $asset = & $scriptPath -NexusBaseUrl '${baseUrl}' -Repository '${repository}' -PathPrefix '${pathPrefix}'
 
@@ -488,7 +492,7 @@ Get-ChocolateyWebFile @packageArgs
           `internal/${package_id}/tools/chocolateyinstall.ps1`,
         ],
         au_get_latest_source: usedNexusGeneric
-          ? `reads the latest asset from Nexus generic repo '${nexus_generic_repository}' at '${nexus_generic_path_prefix}' (paywalled-software path — NOT yet verified against a real Nexus instance, see docs/architecture.md)`
+          ? `reads the latest asset from Nexus generic repo '${nexus_generic_repository}' at '${nexus_generic_path_prefix}' (paywalled-software path — verified against a real Nexus instance, see docs/architecture.md)`
           : usedEvergreen
             ? `seeded from evergreen-api ('${evergreen_app_name}')`
             : evergreenError
@@ -518,7 +522,7 @@ Get-ChocolateyWebFile @packageArgs
             ? `${dependencies.map((d) => `${d.id}${d.version ? ` >= ${d.version}` : ""}`).join(", ")} — carried into the nuspec's <dependencies>, which promotion (Get-PromotionCandidates.ps1) already reads`
             : "none declared",
         still_needs_manual_review: usedNexusGeneric
-          ? "update.ps1's au_GetLatest reads from Nexus generic repo — confirm a human has actually uploaded a binary under the given path prefix, that NEXUS_GENERIC_READ_TOKEN (or equivalent) is configured wherever this package's AU update runs, and that this whole mechanism has been tested against the real Nexus instance at least once (it hasn't yet — see docs/architecture.md)."
+          ? "update.ps1's au_GetLatest reads from Nexus generic repo — confirm a human has actually uploaded a binary under the given path prefix, that NEXUS_GENERIC_READ_TOKEN (a 'username:password' or Nexus User Token pair) is configured wherever this package's AU update runs, and that the target repository is readable by whatever downloads the returned URL (anonymous read scoped to just this one repository is the tested approach — see docs/architecture.md)."
           : "update.ps1's au_GetLatest — verify the architecture/version-matching logic (and the releases URL/regex, if not evergreen-seeded) against this vendor's real release page before merging.",
       },
       null,

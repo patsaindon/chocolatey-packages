@@ -52,3 +52,54 @@ docker run -d --name choco-test-prod    -p 5556:8080 -e ApiKey=test-key-prod bag
 ```
 
 Point `STAGING_FEED_URL`/`PRODUCTION_FEED_URL` at `http://localhost:5555/v3/index.json` / `http://localhost:5556/v3/index.json`. See [docs/architecture.md § 14](docs/architecture.md#14-implementation-status--roadmap) for the full recipe.
+
+### Testing (or demoing) the Nexus generic path
+
+The paywalled-package mechanism (`scripts/Get-NexusGenericLatestAsset.ps1`, `docs/architecture.md § 6.8`) needs a real Nexus, not a NuGet-compatible stand-in — its own generic (raw) repository format and Search Assets API are Nexus-specific. Sonatype's own image stands one up in a couple of minutes:
+
+```
+docker run -d --name nexus-test -p 8082:8081 sonatype/nexus3:latest
+# Nexus takes ~60-90s to finish starting; poll until this returns 200:
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8082/service/rest/v1/status
+
+# Initial admin password:
+docker exec nexus-test cat /nexus-data/admin.password
+
+# Accept the EULA (required before anything else works), create a generic
+# hosted repo, then upload a real file to it -- replace ADMIN_PW below:
+curl -s -u admin:ADMIN_PW http://localhost:8082/service/rest/v1/system/eula \
+  | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const j=JSON.parse(d);j.accepted=true;console.log(JSON.stringify(j));})" \
+  > eula-payload.json
+curl -s -u admin:ADMIN_PW -X POST http://localhost:8082/service/rest/v1/system/eula \
+  -H "Content-Type: application/json" --data-binary @eula-payload.json
+
+curl -s -u admin:ADMIN_PW -X POST http://localhost:8082/service/rest/v1/repositories/raw/hosted \
+  -H "Content-Type: application/json" \
+  -d '{"name":"generic-hosted","online":true,"storage":{"blobStoreName":"default","strictContentTypeValidation":true,"writePolicy":"ALLOW"}}'
+
+curl -s -u admin:ADMIN_PW --upload-file ./some-real-installer.exe \
+  http://localhost:8082/repository/generic-hosted/acme/my-app/my-app-1.0.0.exe
+```
+
+Then point `scaffold_internal_package`'s `nexus_generic_base_url`/`nexus_generic_repository`/`nexus_generic_path_prefix` at `http://localhost:8082` / `generic-hosted` / `acme/my-app/`, and set `NEXUS_GENERIC_READ_TOKEN=admin:ADMIN_PW` for `Get-NexusGenericLatestAsset.ps1` to use.
+
+**For the actual install step to work too** (not just the version/checksum lookup), the repository also needs to be *readable* by whatever downloads the file — `Get-ChocolateyWebFile` sends no credential of its own. The tested, narrowly-scoped way to allow that (verified for real: a second, unrelated repo created purely to test isolation stayed correctly denied while this one succeeded):
+
+```
+# 1. Enable anonymous access at all (system-wide toggle):
+curl -s -u admin:ADMIN_PW -X PUT http://localhost:8082/service/rest/v1/security/anonymous \
+  -H "Content-Type: application/json" -d '{"enabled":true,"userId":"anonymous","realmName":"NexusAuthorizingRealm"}'
+
+# 2. Do NOT leave the anonymous user on the default 'nx-anonymous' role --
+#    it grants read across every repository in the instance. Give it a
+#    role scoped to just the one repository instead:
+curl -s -u admin:ADMIN_PW -X POST http://localhost:8082/service/rest/v1/security/roles \
+  -H "Content-Type: application/json" \
+  -d '{"id":"generic-hosted-anonymous-read","name":"generic-hosted-anonymous-read","privileges":["nx-repository-view-raw-generic-hosted-read","nx-repository-view-raw-generic-hosted-browse"]}'
+
+curl -s -u admin:ADMIN_PW -X PUT http://localhost:8082/service/rest/v1/security/users/anonymous \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"anonymous","firstName":"Anonymous","lastName":"User","emailAddress":"anonymous@example.org","source":"default","status":"active","roles":["generic-hosted-anonymous-read"]}'
+```
+
+See [docs/architecture.md § 6.8](docs/architecture.md#68-mcp-server--agent-driven-package-creation) for what real testing against this exact setup found (two real bugs in `Get-NexusGenericLatestAsset.ps1`, both fixed, and this anonymous-read scoping requirement).
