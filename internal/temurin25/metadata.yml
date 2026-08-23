@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: temurin25
+owner: platform-engineering                  # owning team, drives notification routing
+notes: "Internal AU-based package tracking Adoptium Temurin 25 releases"
