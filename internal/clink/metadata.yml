@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: clink
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own clink package is stuck at 0.4.9 (2945 days stale) while the vendor's real current release is v1.9.32."
