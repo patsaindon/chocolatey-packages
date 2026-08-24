@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: coapp
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own coapp package is stuck at 1.23.521 (published 2015-06-26) while the vendor is at 2.0.19. This internal package tracks the vendor's own GitHub releases (aclap-dev/vdhcoapp) directly. NOTE: Community's existing \"coapp\" package id is an unrelated, unmaintained package for CoApp.Tools.Powershell (coapp.org) -- not this software -- do not reuse its install logic."

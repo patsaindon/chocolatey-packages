@@ -1,0 +1,15 @@
+# Facts learned about this vendor's packages while onboarding or
+# updating them -- checksum field names, image-type/architecture
+# defaults, version-format quirks, known-good silent-install switches.
+# Read by the package-request agent before scaffolding (see
+# lookup_package_knowledge) so an already-solved quirk isn't
+# rediscovered by trial and error on the next package from the same
+# vendor. Written only locally by write_package_knowledge -- a human
+# reviews every change here in the same PR as the package it came
+# from, never a silent agent write. See docs/architecture.md section 6.8.
+
+silent_args: /S
+source_url: "https://github.com/aclap-dev/vdhcoapp/releases"
+notes: "silent_args '/S' is a framework-typical guess only -- installer (vdhcoapp-windows-x86_64-installer.exe v2.0.19) fingerprinted as NSIS (Nullsoft) via get_installer_signals with High confidence, candidate switches '/S' and '/S /D=<install path>'; NOT confirmed by real testing yet -- verify with scripts/New-SilentTestKit.ps1 before trusting unattended. winget (get_winget_package_manifest) is unavailable in this environment (spawn ENOENT for both a name search and the exact id 'ACLAP.DownloadHelperCoApp'), so that step could not be tried. Community's package id 'coapp' is a same-name coincidence for unrelated software (CoApp.Tools.Powershell from coapp.org, installed via msi /quiet from downloads.coapp.org) -- its detectedSilentArgs/script must NOT be reused for this vendor's packages."
+last_verified_via: coapp
+last_verified: 2026-08-24
