@@ -93,7 +93,15 @@ try {
     $localPath = Join-Path $tempDir $fileName
 
     Write-MirrorLog "[Publish-ToNexusGeneric] Downloading '$SourceUrl' -> '$localPath'"
-    Invoke-WebRequest -Uri $SourceUrl -OutFile $localPath -UseBasicParsing
+    # Explicit browser-like UserAgent -- found by testing a real CI failure:
+    # repo.anaconda.com returned a reproducible 403 Forbidden (confirmed on
+    # two separate runs, hours apart, same URL) specifically to
+    # Invoke-WebRequest's own default UA string
+    # ("Mozilla/5.0 ... WindowsPowerShell/x.y"), while the identical URL
+    # returned 200 in manual testing with ordinary browser/curl UAs --
+    # consistent with a WAF/CDN rule blocking recognizably-scripted PowerShell
+    # requests rather than any real rate-limit or outage on Anaconda's side.
+    Invoke-WebRequest -Uri $SourceUrl -OutFile $localPath -UseBasicParsing -UserAgent 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
     Write-MirrorLog "[Publish-ToNexusGeneric] Downloaded $((Get-Item $localPath).Length) bytes"
 
     Write-MirrorLog "[Publish-ToNexusGeneric] Scanning downloaded file before mirroring it anywhere"

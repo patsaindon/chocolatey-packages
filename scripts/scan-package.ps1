@@ -84,9 +84,32 @@ function Invoke-AvScan {
     # would, under this script's own $ErrorActionPreference = 'Stop', be
     # auto-promoted into an uncaught terminating exception regardless of
     # MpCmdRun's actual exit code.
-    & $mpCmdRun -Scan -ScanType 3 -File $FilePath -DisableRemediation 2>&1 | Out-Null
+    #
+    # Captured (not discarded via Out-Null) and logged below -- found by
+    # testing a real CI run: multiple unrelated, legitimate vendor
+    # installers got flagged with exit code 2 ("threat found") on this
+    # runner in a single day, one of them (the same exact binary, same
+    # run) passing on 3 of 5 repeated scans. A bare true/false gave no way
+    # to tell a real detection from Defender's own heuristic flakiness --
+    # this is the minimum needed to actually diagnose that.
+    $mpCmdRunOutput = & $mpCmdRun -Scan -ScanType 3 -File $FilePath -DisableRemediation 2>&1
     # Exit code 0 = clean, 2 = threat found. Anything else is an execution error.
     if ($LASTEXITCODE -eq 2) {
+        $mpCmdRunOutput | ForEach-Object { Write-ScanLog "  MpCmdRun: $_" }
+        # MpCmdRun's own console output rarely names the detected threat;
+        # Get-MpThreatDetection (the Defender PowerShell module, built into
+        # Windows alongside MpCmdRun.exe) is the actual source of that.
+        # Best-effort only -- never let a diagnostics lookup fail the scan
+        # verdict itself.
+        try {
+            $threat = Get-MpThreatDetection -ErrorAction Stop |
+                Sort-Object InitialDetectionTime -Descending | Select-Object -First 1
+            if ($threat) {
+                Write-ScanLog "  MpCmdRun: most recent detection -- ThreatID=$($threat.ThreatID) Resources=$($threat.Resources -join ', ')"
+            }
+        } catch {
+            Write-ScanLog "  MpCmdRun: Get-MpThreatDetection unavailable ($($_.Exception.Message))"
+        }
         return $false
     } elseif ($LASTEXITCODE -ne 0) {
         throw "MpCmdRun.exe exited with unexpected code $LASTEXITCODE while scanning $FilePath"
@@ -119,6 +142,19 @@ function Invoke-VulnScan {
         # Redirecting merges stderr into this captured output instead,
         # sidestepping that promotion entirely; each line is then just
         # logged plainly below.
+        #
+        # GRYPE_DB_AUTO_UPDATE=false -- found by testing a real CI run:
+        # test_all.ps1/update_all.ps1 run Threads=10 packages in parallel,
+        # each independently invoking this function, and grype's own
+        # default auto-update-if-stale behavior let up to 10 of those race
+        # to update the same on-disk DB cache at once. That race corrupted
+        # it (a purge failing mid-update because another process held the
+        # file open), which then made every scan on the runner fail to
+        # load the DB at all -- misreported below as "no vulnerability
+        # matches" rather than the real cause. The DB is instead refreshed
+        # exactly once, serially, before any parallel work starts -- see
+        # scripts/Initialize-GrypeDb.ps1.
+        $env:GRYPE_DB_AUTO_UPDATE = 'false'
         $grypeOutput = & grype "dir:$ExtractedDir" -o json --file $reportPath --fail-on $MinSeverity 2>&1
         $grypeExitCode = $LASTEXITCODE
         $grypeOutput | ForEach-Object { Write-ScanLog "  grype: $_" }
@@ -134,6 +170,16 @@ function Invoke-VulnScan {
 
         foreach ($m in $flagged) {
             Write-ScanLog "  VULN: $($m.vulnerability.id) [$($m.vulnerability.severity)] in $($m.artifact.name)@$($m.artifact.version)"
+        }
+
+        # A non-zero exit with nothing actually flagged means grype never
+        # completed a real scan (DB load failure, crash, etc.) rather than
+        # having found and reported a match -- surfaced distinctly so this
+        # isn't mistaken for a real finding like the "FAIL: vulnerability
+        # ... found" case above it, should Initialize-GrypeDb.ps1 not have
+        # run, or the DB break again for some other reason.
+        if ($grypeExitCode -ne 0 -and $flagged.Count -eq 0) {
+            Write-ScanLog "  GRYPE EXECUTION FAILURE: grype exited $grypeExitCode without completing a scan (see the 'grype:' lines above) -- this is NOT a real vulnerability finding. Still failing the scan (an unscanned binary can't be trusted), but investigate the grype/DB error above, not the package."
         }
 
         # grype's --fail-on already sets a non-zero exit code when matches meet
