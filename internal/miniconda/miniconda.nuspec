@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>miniconda</id>
+    <version>0.0.0</version>
+    <title>Anaconda Miniconda</title>
+    <authors>Anaconda, Inc.</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://repo.anaconda.com/miniconda/</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/miniconda</packageSourceUrl>
+    <description>Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own Miniconda package is stuck at 4.3.21 (published 2017-07-04, 3336 days stale) while the vendor is real at 26.5.3 -- a huge version gap.</description>
+    <tags>internal anaconda-inc</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
