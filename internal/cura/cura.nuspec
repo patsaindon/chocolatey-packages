@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>cura</id>
+    <version>0.0.0</version>
+    <title>UltiMaker Cura</title>
+    <authors>UltiMaker</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://github.com/Ultimaker/Cura/releases</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/cura</packageSourceUrl>
+    <description>Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own Cura package is stuck at 19.4.1 (2555 days stale) while the vendor's real current release is confirmed at 5.13.0 (github.com/Ultimaker/Cura/releases).</description>
+    <tags>internal ultimaker</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
