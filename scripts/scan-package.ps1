@@ -92,9 +92,40 @@ function Invoke-AvScan {
     # run) passing on 3 of 5 repeated scans. A bare true/false gave no way
     # to tell a real detection from Defender's own heuristic flakiness --
     # this is the minimum needed to actually diagnose that.
-    $mpCmdRunOutput = & $mpCmdRun -Scan -ScanType 3 -File $FilePath -DisableRemediation 2>&1
+    #
+    # Serialized via a named, machine-wide Mutex -- the same root cause
+    # and fix shape as scripts/Initialize-GrypeDb.ps1's grype DB race.
+    # test_all.ps1/update_all.ps1 run Threads=10 packages in parallel
+    # (separate AU background-job processes, not just threads in one
+    # process -- confirmed by testing: an in-process lock alone did not
+    # stop this), each independently invoking MpCmdRun.exe. Confirmed by
+    # testing a real CI run where this got dramatically worse over a
+    # single day: 11 of 15 packages flagged in one run alone, including
+    # several (codegraphcontext, open-design) that had scanned clean
+    # minutes earlier, and Get-MpThreatDetection's own history staying
+    # empty despite the "detections" -- consistent with MpCmdRun's
+    # engine/IPC not tolerating concurrent on-demand scans reliably
+    # (spurious exit code 2) rather than genuine, repeatable detections.
+    # A generous 15-minute wait accommodates every scan in the queue
+    # ahead of this one rather than spuriously timing out under normal
+    # Threads=10 load; this only serializes MpCmdRun's own few-seconds
+    # scan call, not the download/upload around it, so total added wall
+    # time per run is bounded by (scan count) x (single scan duration).
+    $mpCmdRunMutex = New-Object System.Threading.Mutex($false, 'Global\ChocolateyPackagesMpCmdRunScan')
+    $mpCmdRunMutexAcquired = $false
+    try {
+        $mpCmdRunMutexAcquired = $mpCmdRunMutex.WaitOne([TimeSpan]::FromMinutes(15))
+        if (-not $mpCmdRunMutexAcquired) {
+            throw "Timed out after 15 minutes waiting for exclusive access to MpCmdRun.exe -- another scan appears stuck holding it."
+        }
+        $mpCmdRunOutput = & $mpCmdRun -Scan -ScanType 3 -File $FilePath -DisableRemediation 2>&1
+        $mpCmdRunExitCode = $LASTEXITCODE
+    } finally {
+        if ($mpCmdRunMutexAcquired) { $mpCmdRunMutex.ReleaseMutex() }
+        $mpCmdRunMutex.Dispose()
+    }
     # Exit code 0 = clean, 2 = threat found. Anything else is an execution error.
-    if ($LASTEXITCODE -eq 2) {
+    if ($mpCmdRunExitCode -eq 2) {
         $mpCmdRunOutput | ForEach-Object { Write-ScanLog "  MpCmdRun: $_" }
         # MpCmdRun's own console output rarely names the detected threat;
         # Get-MpThreatDetection (the Defender PowerShell module, built into
@@ -111,8 +142,8 @@ function Invoke-AvScan {
             Write-ScanLog "  MpCmdRun: Get-MpThreatDetection unavailable ($($_.Exception.Message))"
         }
         return $false
-    } elseif ($LASTEXITCODE -ne 0) {
-        throw "MpCmdRun.exe exited with unexpected code $LASTEXITCODE while scanning $FilePath"
+    } elseif ($mpCmdRunExitCode -ne 0) {
+        throw "MpCmdRun.exe exited with unexpected code $mpCmdRunExitCode while scanning $FilePath"
     }
     return $true
 }
