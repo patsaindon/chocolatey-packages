@@ -201,14 +201,36 @@ jobs:
             docs/silent-switch-verification.md) before this package's
             switch is trusted unattended.
 
+            Before calling scaffold_internal_package, compose a real,
+            accurate one-or-two-sentence description of what this
+            software actually *does* (not why you're packaging it) —
+            from what you already know about the product, or from the
+            form's source_url page if you're not sure. This is
+            deliberately a separate concern from the form's own Notes
+            field: found by auditing already-onboarded packages that most
+            of their nuspecs ended up with their <description> — shown to
+            anyone browsing or installing the package — literally reading
+            as packaging rationale ("Surfaced by the version-mismatch
+            triage of...") because scaffold_internal_package used to have
+            only one field doing double duty as both. If
+            lookup_package_knowledge already returned a
+            'product_description' for this vendor and it's still accurate
+            for this package (true for a second package from the same
+            underlying product; not necessarily true for an unrelated
+            product from the same vendor), you can reuse it instead of
+            writing a new one.
+
             Then call
             scaffold_internal_package with the package_id/owner_team/
-            source_url/notes from the form, the vendor slug, plus
-            whichever of evergreen_app_name/silent_args you found
-            yourself this run (an explicit value always wins over the
-            vendor's knowledge-base one), plus the form's "Software
-            name"/"Vendor / publisher" fields as title/vendor_name if
-            given (these seed the nuspec's <title>/<authors> — leave them
+            source_url from the form, this description (its own
+            'description' parameter — keep the form's own Notes as
+            'notes', which only ever lands in metadata.yml, separate from
+            this), the vendor slug, plus whichever of
+            evergreen_app_name/silent_args you found yourself this run
+            (an explicit value always wins over the vendor's
+            knowledge-base one), plus the form's "Software name"/"Vendor /
+            publisher" fields as title/vendor_name if given (these seed
+            the nuspec's <title>/<authors> — leave them
             out and let evergreen or the generic fallback handle it if
             the form left them blank), plus package_kind/binary_name from
             the form's own fields when this is the portable case handled
@@ -218,10 +240,12 @@ jobs:
             knowledge didn't already have for this vendor (whether from
             get_winget_package_manifest, get_community_package_tools,
             search_silent_install_switch, or your own reading of a
-            script), call write_package_knowledge
+            script), or if you wrote a new product_description this run
+            (not just reused an existing one), call write_package_knowledge
             with the same vendor slug to record it — don't let a value
-            you had to search for die with this one package when the next
-            one from the same vendor could just reuse it. Also record any
+            you had to search for (or write from scratch) die with this
+            one package when the next one from the same vendor could just
+            reuse it. Also record any
             other vendor-level fact you learned or corrected (checksum
             field name, image-type/architecture default, version-format
             quirks). Either way, include the file write_package_knowledge
@@ -244,8 +268,16 @@ jobs:
             the vendor's own paywalled portal, downloaded the binary
             themselves, and uploaded it to that path in Nexus — you never
             attempt to reach the vendor's real download page or any login
-            for this package type. Call scaffold_internal_package with the
-            package_id/owner_team/notes/software_name/vendor_name/
+            for this package type. As in the AU-based case above, compose
+            a real one-or-two-sentence description of what this software
+            actually does (from what you already know about it, or the
+            form's source_url/Notes) and pass it as scaffold_internal_
+            package's own 'description' parameter, separate from the
+            form's Notes field (passed as 'notes', metadata.yml only) —
+            don't let this package's nuspec fall back to the generic
+            placeholder just because there's no public installer to
+            analyze here. Call scaffold_internal_package with the
+            package_id/owner_team/notes/description/software_name/vendor_name/
             source_url from the form (source_url here is the vendor's own
             product page for the nuspec's <projectUrl> — distinct from the
             Nexus fields, which are where the binary actually lives; found

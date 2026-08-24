@@ -1,0 +1,20 @@
+# Facts learned about this vendor's packages while onboarding or
+# updating them -- checksum field names, image-type/architecture
+# defaults, version-format quirks, known-good silent-install switches.
+# Read by the package-request agent before scaffolding (see
+# lookup_package_knowledge) so an already-solved quirk isn't
+# rediscovered by trial and error on the next package from the same
+# vendor. Written only locally by write_package_knowledge -- a human
+# reviews every change here in the same PR as the package it came
+# from, never a silent agent write. See docs/architecture.md section 6.8.
+
+product_description: "Xournal++ is a free, open-source handwriting notetaking application with PDF annotation support."
+silent_args: /S
+installer_type: exe
+installer_framework: NSIS
+silent_args_source: installer_signals
+silent_args_verified: false
+source_url: "https://github.com/xournalpp/xournalpp/releases"
+notes: "Xournal++ installers are NSIS (Nullsoft)-based (high-confidence framework fingerprint via get_installer_signals on xournalpp-1.3.7-windows-setup-AMD64.exe). Candidate silent switch /S is NSIS's generic default, NOT confirmed by winget (unavailable in this environment: 'spawn winget ENOENT') or by Community's xournal package (that package tracks the old, unrelated, defunct 0.4.8 Xournal project via a sourceforge zip, not an NSIS exe -- not applicable to Xournal++). A human should verify /S locally with scripts/New-SilentTestKit.ps1 before trusting it unattended. Evergreen-api app name 'Xournal' genuinely tracks Xournal++ (application field = 'Xournal++', link = xournalpp.github.io, download URIs point at github.com/xournalpp/xournalpp/releases) -- confirmed not the original defunct Xournal project."
+last_verified_via: xournal (package-request/xournal PR)
+last_verified: 2026-08-24

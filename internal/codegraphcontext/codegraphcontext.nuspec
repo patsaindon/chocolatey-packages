@@ -8,7 +8,7 @@
     <owners>IT Operations</owners>
     <projectUrl>https://github.com/CodeGraphContext/CodeGraphContext/releases</projectUrl>
     <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/codegraphcontext</packageSourceUrl>
-    <description>An MCP server + CLI tool that indexes local code into a graph database for AI assistants (MIT licensed). Surfaced by prospect-packaging-opportunities.yml automated discovery (4,111 stars, no existing Chocolatey Community package found via choco search --exact).</description>
+    <description>An MCP server + CLI tool that indexes local code into a graph database for AI assistants (MIT licensed).</description>
     <tags>internal</tags>
     <dependencies />
   </metadata>

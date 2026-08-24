@@ -22,7 +22,22 @@ if (($Name.Length -gt 0) -and ($Name[0] -match '^random (.+)')) {
 $options = [ordered]@{
     Force   = $true
     Push    = $false
-    Threads = 10 
+    Threads = 10
+
+    # AU's own default (unset here previously) turned out to be 1200s --
+    # found by testing a real CI run straight after scan-package.ps1's
+    # MpCmdRun calls were serialized via a lock file (scripts/scan-
+    # package.ps1's Invoke-AvScan, fixing a real AV false-positive
+    # problem under concurrent scans): once every package has to queue
+    # for that one shared lock, a package near the back of a 15-package
+    # queue can spend more than 20 minutes just waiting its turn, and AU
+    # killed it with "Job terminated due to the 1200s UpdateTimeout"
+    # despite the lock itself never coming close to timing out (that
+    # wait is capped at 45 minutes). Set comfortably above that cap so a
+    # genuinely stuck lock is what reports first, with AU's own timeout
+    # as an outer backstop rather than the thing actually firing under
+    # normal queueing.
+    UpdateTimeout = 3600
 
     IgnoreOn = @(                                      #Error message parts to set the package ignore status
         'Could not create SSL/TLS secure channel'

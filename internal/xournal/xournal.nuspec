@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>xournal</id>
+    <version>0.0.0</version>
+    <title>Xournal++</title>
+    <authors>Xournal++ contributors</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://github.com/xournalpp/xournalpp/releases</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/xournal</packageSourceUrl>
+    <description>Xournal++ is a free, open-source handwriting notetaking application with PDF annotation support.</description>
+    <tags>internal xournal-contributors</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
