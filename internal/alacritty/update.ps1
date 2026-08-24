@@ -4,6 +4,11 @@
 # Run for a single package:  .\update.ps1 -Verbose
 # Run for every internal/ package: see update_all.ps1 / test_all.ps1 at the
 # repo root, and .github/workflows/update-internal-packages.yml.
+#
+# (No functional change -- this comment exists only to make this PR touch
+# a real internal/ package, so test-internal-packages.yml's own PR run
+# validates PR #66's targeted-test-only-what-changed fix for real: this
+# should be the only package that gets linted/tested/scanned this run.)
 
 import-module au
 
