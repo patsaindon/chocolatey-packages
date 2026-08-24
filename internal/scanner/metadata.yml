@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: scanner
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by version-mismatch triage of prospecting/community-version-reference.csv. Community's own scanner package was stuck at 2.13.0.20151227 (and, per get_community_package_tools during scaffolding, actually tracks unrelated software from steffengerlach.de -- not Angry IP Scanner at all). This AU-based package tracks the vendor's real release page directly."
