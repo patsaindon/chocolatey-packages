@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: win32-openssh
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by version-mismatch triage of prospecting/community-version-reference.csv. Community's win32-openssh package is stuck at 2016.5.30.20160922 (3621 days stale) while the vendor is at 10.0.0.0 -- a security-relevant (SSH) package worth tracking directly from the vendor's own GitHub Releases."
