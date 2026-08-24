@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>geogebra</id>
+    <version>0.0.0</version>
+    <title>GeoGebra Classic</title>
+    <authors>International GeoGebra Institute</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://www.geogebra.org/download</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/geogebra</packageSourceUrl>
+    <description>Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own geogebra package is stuck at 5.0.134 (published 2015-07-20, 4052 days stale) while the vendor is real at 6.0.927.1 — a major-version gap.</description>
+    <tags>internal international-geogebra-institute</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
