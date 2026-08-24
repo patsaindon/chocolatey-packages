@@ -1,0 +1,15 @@
+# Facts learned about this vendor's packages while onboarding or
+# updating them -- checksum field names, image-type/architecture
+# defaults, version-format quirks, known-good silent-install switches.
+# Read by the package-request agent before scaffolding (see
+# lookup_package_knowledge) so an already-solved quirk isn't
+# rediscovered by trial and error on the next package from the same
+# vendor. Written only locally by write_package_knowledge -- a human
+# reviews every change here in the same PR as the package it came
+# from, never a silent agent write. See docs/architecture.md section 6.8.
+
+silent_args: /S
+source_url: "https://repo.anaconda.com/miniconda/"
+notes: "silent_args '/S' confirmed from Community's real, working miniconda chocolateyInstall.ps1 (Install-ChocolateyPackage -SilentArgs \"/S\", NSIS-style installer). source_url is the vendor's own release directory listing all Miniconda installers by version/arch/Python version."
+last_verified_via: miniconda (package-request/miniconda)
+last_verified: 2026-08-24

@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: miniconda
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own Miniconda package is stuck at 4.3.21 (published 2017-07-04, 3336 days stale) while the vendor is real at 26.5.3 -- a huge version gap."
