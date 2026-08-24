@@ -135,6 +135,31 @@ jobs:
             scaffold_internal_package generate a real, working
             au_GetLatest instead of a generic placeholder).
 
+            If search_evergreen_app found nothing and the form's
+            source_url isn't a github.com repository (scaffold_internal_
+            package already generates a real GitHub Releases API call on
+            its own when it is — nothing to do there), call
+            inspect_download_page with source_url before falling through
+            to the generic placeholder. Read what it actually returns:
+            if assetLinks has a real Windows installer/archive entry
+            (or textExcerpt shows one you can build from the visible
+            page structure), work out the real regex this vendor's page
+            uses -- a .NET regex against the raw HTML with named
+            '(?<url>...)' and '(?<version>...)' groups (see
+            scaffold_internal_package's own au_getlatest_link_pattern
+            parameter for the exact contract) -- and pass that plus the
+            page URL as au_getlatest_page_url/au_getlatest_link_pattern.
+            This is a genuine improvement over the blind package-id
+            guess, but it's still only one page snapshot, not a tested
+            version history -- if assetLinks came back empty (the page
+            may render its real links via client-side JavaScript, which
+            this tool can't execute) or you're not confident in a real
+            pattern, don't force it: let scaffold_internal_package fall
+            through to its own generic placeholder instead of guessing a
+            regex that looks plausible but was never actually matched
+            against anything real. Either way, say in the PR body which
+            of the two happened.
+
             Check the form's "Package kind" field before anything else
             below. If it says "Portable binary" (a standalone .exe with no
             install wizard at all — confirmed by real testing that running
@@ -228,7 +253,9 @@ jobs:
             this), the vendor slug, plus whichever of
             evergreen_app_name/silent_args you found yourself this run
             (an explicit value always wins over the vendor's
-            knowledge-base one), plus the form's "Software name"/"Vendor /
+            knowledge-base one), plus au_getlatest_page_url/
+            au_getlatest_link_pattern if inspect_download_page got you a
+            real recipe above, plus the form's "Software name"/"Vendor /
             publisher" fields as title/vendor_name if given (these seed
             the nuspec's <title>/<authors> — leave them
             out and let evergreen or the generic fallback handle it if
@@ -313,7 +340,7 @@ jobs:
           claude -p $prompt `
             --mcp-config mcp-server/mcp-config.json `
             --strict-mcp-config `
-            --allowedTools "mcp__chocolatey-packages__search_community_package mcp__chocolatey-packages__bootstrap_internalize_package mcp__chocolatey-packages__scaffold_internal_package mcp__chocolatey-packages__lint_package mcp__chocolatey-packages__open_pull_request mcp__chocolatey-packages__search_evergreen_app mcp__chocolatey-packages__get_evergreen_app_info mcp__chocolatey-packages__search_silent_install_switch mcp__chocolatey-packages__lookup_package_knowledge mcp__chocolatey-packages__write_package_knowledge mcp__chocolatey-packages__get_community_package_tools mcp__chocolatey-packages__get_winget_package_manifest mcp__chocolatey-packages__download_installer_file mcp__chocolatey-packages__get_installer_signals" `
+            --allowedTools "mcp__chocolatey-packages__search_community_package mcp__chocolatey-packages__bootstrap_internalize_package mcp__chocolatey-packages__scaffold_internal_package mcp__chocolatey-packages__lint_package mcp__chocolatey-packages__open_pull_request mcp__chocolatey-packages__search_evergreen_app mcp__chocolatey-packages__get_evergreen_app_info mcp__chocolatey-packages__search_silent_install_switch mcp__chocolatey-packages__lookup_package_knowledge mcp__chocolatey-packages__write_package_knowledge mcp__chocolatey-packages__get_community_package_tools mcp__chocolatey-packages__get_winget_package_manifest mcp__chocolatey-packages__download_installer_file mcp__chocolatey-packages__get_installer_signals mcp__chocolatey-packages__inspect_download_page" `
             --permission-mode bypassPermissions `
             --output-format json > agent_output.json
 
