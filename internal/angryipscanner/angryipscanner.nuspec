@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>angryipscanner</id>
+    <version>0.0.0</version>
+    <title>Angry IP Scanner</title>
+    <authors>angryziber (Anton Keks)</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://angryip.org/download/</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/angryipscanner</packageSourceUrl>
+    <description>Surfaced by version-mismatch triage of prospecting/community-version-reference.csv. Renamed from the originally-scaffolded package id 'scanner' to 'angryipscanner' on human review: Community's own 'scanner' package is unrelated software (per get_community_package_tools during scaffolding, it actually tracks scn2.zip from steffengerlach.de -- not Angry IP Scanner at all), and reusing that id here would collide if Community's real 'scanner' package is ever internalized onto the same feed. This AU-based package tracks the vendor's real release page directly.</description>
+    <tags>internal angryziber-anton-keks</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

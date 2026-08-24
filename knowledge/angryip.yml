@@ -11,5 +11,5 @@
 silent_args: /S
 source_url: "https://angryip.org/download/"
 notes: "silent_args confirmed via search_silent_install_switch (ManageEngine catalog: 'ipscan-3.9.3-setup.exe /S'), matching vendor's real 3.9.3 release. Community's own 'scanner' package id is NOT this software -- it downloads scn2.zip from steffengerlach.de, an unrelated tool -- do not reuse Community's 'scanner' package as a reference for this vendor."
-last_verified_via: scanner (package-request/scanner)
+last_verified_via: angryipscanner (package-request/scanner, renamed on human review to avoid colliding with Community's unrelated 'scanner' package id)
 last_verified: 2026-08-24

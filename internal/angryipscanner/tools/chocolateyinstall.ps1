@@ -6,10 +6,10 @@ $toolsPath = Split-Path $MyInvocation.MyCommand.Definition
 # file with empty url/checksum is the normal, expected state for an AU
 # package — do not fill them in by hand.
 $packageArgs = @{
-  packageName    = 'scanner'
+  packageName    = 'angryipscanner'
   fileType       = 'exe'                # adjust: exe / msi / msu
   url            = ''
-  softwareName   = 'scanner*'         # part of/whole software name, for uninstall registry lookup
+  softwareName   = 'Angry IP Scanner*'  # real installed-program display name, for uninstall registry lookup
   checksum       = ''
   checksumType   = 'sha256'
   silentArgs     = '/S'
