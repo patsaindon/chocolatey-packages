@@ -2,7 +2,9 @@ name: Test Internal Packages
 # Validates internal/<id>/ packages on PRs touching them, before
 # update-internal-packages.yml ever runs against them for real. Uses AU's
 # test_all.ps1 (Force=true, Push=false — never touches any feed) to force
-# an update check + pack for every changed package. See internal/README.md.
+# an update check + pack, but only for the package(s) this PR actually
+# changed -- see the "Detect changed internal packages" step below for why.
+# See internal/README.md.
 
 on:
   pull_request:
@@ -17,22 +19,31 @@ jobs:
         with:
           fetch-depth: 0   # need origin/<base_ref> available for the diff below
 
+      - name: Detect changed internal packages
+        id: changed
+        shell: pwsh
+        run: |
+          $changed = git diff --name-only origin/${{ github.base_ref }}...HEAD -- internal/ |
+            ForEach-Object { ($_ -split '/')[1] } | Where-Object { $_ -and $_ -notlike '_*' } | Sort-Object -Unique
+          # A PR that deletes a package, or only touches internal/_template/,
+          # shouldn't try to lint/test something no longer there.
+          $changed = @($changed | Where-Object { Test-Path (Join-Path .\internal $_) })
+          Write-Host "Changed internal packages: $(if ($changed) { $changed -join ', ' } else { '(none)' })"
+          "packages=$($changed -join ',')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
       - name: Lint changed internal packages
+        if: steps.changed.outputs.packages != ''
         shell: pwsh
         run: |
           $failed = $false
-          $changed = git diff --name-only origin/${{ github.base_ref }}...HEAD -- internal/ |
-            ForEach-Object { ($_ -split '/')[1] } | Where-Object { $_ -and $_ -notlike '_*' } | Sort-Object -Unique
-          foreach ($id in $changed) {
-            $dir = Join-Path .\internal $id
-            if (Test-Path $dir) {
-              ./scripts/lint-nuspec.ps1 -PackageDir $dir
-              if ($LASTEXITCODE -ne 0) { $failed = $true }
-            }
+          foreach ($id in ('${{ steps.changed.outputs.packages }}' -split ',')) {
+            ./scripts/lint-nuspec.ps1 -PackageDir (Join-Path .\internal $id)
+            if ($LASTEXITCODE -ne 0) { $failed = $true }
           }
           if ($failed) { exit 1 }
 
-      - name: Force-test internal packages (AU, no push)
+      - name: Force-test changed internal packages (AU, no push)
+        if: steps.changed.outputs.packages != ''
         shell: pwsh
         env:
           # Only used by a package whose au_GetLatest reads from a Nexus
@@ -74,7 +85,21 @@ jobs:
           # a real, correct .nupkg already having been built -- confirmed
           # directly on the runner's own disk after a real "failed" run.
           $ThrowOnErrors = $true
-          ./test_all.ps1 -Root .\internal\
+          # -Name limits this run to only the package(s) this PR actually
+          # changed -- previously omitted, which forced *every* internal
+          # package through the full mirror+scan cycle on *every* PR
+          # regardless of what it touched. Found by testing a real run:
+          # MpCmdRun/Grype only need to run on genuinely new or changed
+          # binaries (production's own update_all.ps1, Force=false, already
+          # only reaches a package's au_BeforeUpdate when au_GetLatest
+          # reports a version different from what's currently packaged --
+          # this step's Force=true bypassed that same protection for every
+          # unrelated package on every single PR). As the package count
+          # grew today, that meant a run testing one changed package still
+          # spent close to an hour serialized behind MpCmdRun scans of the
+          # other ~14 that hadn't changed at all.
+          $names = @('${{ steps.changed.outputs.packages }}' -split ',')
+          ./test_all.ps1 -Root .\internal\ -Name $names
 
       - name: Show Nexus-mirror diagnostic log (if any package used it)
         # Found by testing a real CI run: AU's own output handling can lose

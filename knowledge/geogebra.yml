@@ -8,7 +8,11 @@
 # reviews every change here in the same PR as the package it came
 # from, never a silent agent write. See docs/architecture.md section 6.8.
 
+product_description: "GeoGebra is free, interactive mathematics software for geometry, algebra, spreadsheets, graphing, statistics, and calculus, widely used in education."
 silent_args: /S
+installer_type: exe
+silent_args_source: community_script
+silent_args_verified: false
 source_url: "https://www.geogebra.org/download"
 notes: "silent_args '/S' confirmed from Community's own geogebra package chocolateyInstall.ps1 (get_community_package_tools, detectedSilentArgs regex over real script, sanity-checked against returned file text: $silentArgs = '/S'). Installer is a plain .exe (file_type Exe). Evergreen-api app name is 'GeoGebraClassic'."
 last_verified_via: geogebra (package-request/geogebra PR)

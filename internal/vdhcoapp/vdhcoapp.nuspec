@@ -8,7 +8,7 @@
     <owners>IT Operations</owners>
     <projectUrl>https://github.com/aclap-dev/vdhcoapp/releases</projectUrl>
     <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/vdhcoapp</packageSourceUrl>
-    <description>Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Renamed from the originally-scaffolded package id 'coapp' to 'vdhcoapp' on human review: Community's existing "coapp" package id is an unrelated, unmaintained package for CoApp.Tools.Powershell (coapp.org) -- not this software -- and reusing that id here would collide if Community's real 'coapp' package is ever internalized onto the same feed. This internal package tracks the vendor's own GitHub releases (aclap-dev/vdhcoapp) directly.</description>
+    <description>VideoDownloadHelper Companion App (CoApp) -- the native helper application the VideoDownloadHelper browser extension (Firefox/Chrome) uses to merge, convert, and save downloaded video/audio streams to disk.</description>
     <tags>internal aclap-video-downloadhelper</tags>
     <dependencies />
   </metadata>
