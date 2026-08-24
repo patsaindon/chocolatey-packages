@@ -168,7 +168,7 @@ async function buildEvergreenGetLatest(evergreenAppName, imageType, packageKind)
   const preferred = pickPreferredVariant(variants, { imageType, packageKind });
   if (!preferred) return null;
 
-  // Both conditions must be baked into the *generated* filter too, not
+  // Every condition must be baked into the *generated* filter too, not
   // just used to pick the seed file's initial content — otherwise every
   // subsequent real au_GetLatest run hits the same ambiguity this was
   // written to solve, since evergreen still returns every variant every
@@ -179,20 +179,43 @@ async function buildEvergreenGetLatest(evergreenAppName, imageType, packageKind)
   // single-binary variant (.exe, InstallerType 'Portable') side by side —
   // without this, a future run could silently drift onto the wrong one
   // the moment evergreen's own array order changes.
-  const imageTypeCondition = preferred.ImageType
-    ? ` -and $_.ImageType -eq '${preferred.ImageType}'`
-    : "";
-  const installerTypeCondition = preferred.InstallerType
-    ? ` -and $_.InstallerType -eq '${preferred.InstallerType}'`
-    : "";
+  //
+  // Each condition is *omitted* (not defaulted to an empty-string match)
+  // when its field is absent -- found broken by real testing against
+  // GeoGebraClassic, whose evergreen entries carry no Architecture field
+  // at all: the old code defaulted Architecture to `?? ""`, generating
+  // `$_.Architecture -eq ''`, which can never match a real variant (every
+  // one has *some* value or the property is simply absent, never a bare
+  // empty string) -- au_GetLatest failed outright at real update time
+  // ("No matching evergreen-api variant found"), even though scaffolding
+  // itself had successfully found and used a real variant just seconds
+  // earlier. Building the filter from only the conditions that actually
+  // have a value avoids this for every field, not just Architecture.
+  const conditions = [
+    preferred.Architecture ? `$_.Architecture -eq '${preferred.Architecture}'` : null,
+    preferred.ImageType ? `$_.ImageType -eq '${preferred.ImageType}'` : null,
+    preferred.InstallerType ? `$_.InstallerType -eq '${preferred.InstallerType}'` : null,
+  ].filter(Boolean);
+  // Every real app seen so far has had at least one distinguishing field,
+  // but fall back to "take the first variant, whatever it is" rather than
+  // generate a filter with zero conditions (which would need different,
+  // more awkward PowerShell) on the off chance a future one doesn't.
+  const filterExpr = conditions.length > 0 ? conditions.join(" -and ") : "$true";
+  const seedSummary = [
+    preferred.Architecture ? `Architecture=${preferred.Architecture}` : null,
+    preferred.ImageType ? `ImageType=${preferred.ImageType}` : null,
+    preferred.InstallerType ? `InstallerType=${preferred.InstallerType}` : null,
+  ]
+    .filter(Boolean)
+    .join(", ") || "no distinguishing fields on this app's evergreen entries";
 
   const code = `function global:au_GetLatest {
     # Seeded from evergreen-api.stealthpuppy.com (https://eucpilots.com/evergreen/api/)
     # for '${evergreenAppName}' — verify the filter below still matches what
-    # this package actually wants to ship (was: Architecture=${preferred.Architecture ?? "unknown"}${preferred.ImageType ? `, ImageType=${preferred.ImageType}` : ""}${preferred.InstallerType ? `, InstallerType=${preferred.InstallerType}` : ""}).
+    # this package actually wants to ship (was: ${seedSummary}).
     $releases = "https://evergreen-api.stealthpuppy.com/app/${evergreenAppName}"
     $variants = Invoke-RestMethod -Uri $releases -UserAgent "chocolatey-packages-mcp-server"
-    $latest = $variants | Where-Object { $_.Architecture -eq '${preferred.Architecture ?? ""}'${imageTypeCondition}${installerTypeCondition} } | Select-Object -First 1
+    $latest = $variants | Where-Object { ${filterExpr} } | Select-Object -First 1
     if (-not $latest) { throw "No matching evergreen-api variant found for ${evergreenAppName}." }
 
     # The checksum field name varies per app — found by testing: 7zip uses
