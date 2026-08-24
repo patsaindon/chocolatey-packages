@@ -1,0 +1,17 @@
+# Facts learned about this vendor's packages while onboarding or
+# updating them -- checksum field names, image-type/architecture
+# defaults, version-format quirks, known-good silent-install switches.
+# Read by the package-request agent before scaffolding (see
+# lookup_package_knowledge) so an already-solved quirk isn't
+# rediscovered by trial and error on the next package from the same
+# vendor. Written only locally by write_package_knowledge -- a human
+# reviews every change here in the same PR as the package it came
+# from, never a silent agent write. See docs/architecture.md section 6.8.
+
+silent_args: /qn /norestart
+source_url: "https://github.com/microsoft/WSL/releases"
+checksum_field: Sha256 (evergreen-api)
+architecture_default: x64
+notes: "First package from this vendor (microsoft-wsl). Community's Chocolatey Community Repository 'wsl' package is NOT the same software -- it toggles the in-box Windows Optional Feature (Enable-WindowsOptionalFeature -FeatureName Microsoft-Windows-Subsystem-Linux) and has no installer/silent switch at all, so it can't be used as a silentArgs source for vendor MSI-based Microsoft installers. silent_args here (/qn /norestart) is the standard MSI-quiet default, chosen because evergreen-api's MicrosoftWSL entry offers a real .msi variant (also has a much larger .msixbundle variant not used here) -- not vendor-confirmed via winget or a real install script, since get_winget_package_manifest errored (winget CLI unavailable in this environment) and no community package tools/search-switch match applied."
+last_verified_via: "microsoft-wsl (package-request #69)"
+last_verified: 2026-08-24

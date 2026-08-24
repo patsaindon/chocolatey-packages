@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>microsoft-wsl</id>
+    <version>0.0.0</version>
+    <title>Windows Subsystem for Linux</title>
+    <authors>Microsoft</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://github.com/microsoft/WSL/releases</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/microsoft-wsl</packageSourceUrl>
+    <description>Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own 'wsl' package is stuck at 1.0.1 (2901 days stale) while the vendor's real current release is confirmed at 2.7.12 (github.com/microsoft/WSL/releases) -- this is the separately-updatable WSL launcher app (msixbundle), not the legacy in-box Windows feature.</description>
+    <tags>internal microsoft</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

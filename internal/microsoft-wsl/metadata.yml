@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: microsoft-wsl
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own 'wsl' package is stuck at 1.0.1 (2901 days stale) while the vendor's real current release is confirmed at 2.7.12 (github.com/microsoft/WSL/releases) -- this is the separately-updatable WSL launcher app (msixbundle), not the legacy in-box Windows feature."
