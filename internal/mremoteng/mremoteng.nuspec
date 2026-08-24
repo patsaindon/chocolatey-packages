@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>mremoteng</id>
+    <version>0.0.0</version>
+    <title>mRemoteNG</title>
+    <authors>mRemoteNG</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://github.com/mRemoteNG/mRemoteNG/releases</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/mremoteng</packageSourceUrl>
+    <description>Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own mRemoteNG package is stuck at 1.76.20.24615 (2691 days stale); vendor's real version has moved to 1.78.2 (currently a pre-release migrating to .NET 10 LTS). This internal AU package tracks the vendor's own release page directly.</description>
+    <tags>internal</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
