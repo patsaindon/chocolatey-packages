@@ -6,10 +6,10 @@ $toolsPath = Split-Path $MyInvocation.MyCommand.Definition
 # file with empty url/checksum is the normal, expected state for an AU
 # package — do not fill them in by hand.
 $packageArgs = @{
-  packageName    = 'coapp'
+  packageName    = 'vdhcoapp'
   fileType       = 'exe'                # adjust: exe / msi / msu
   url            = ''
-  softwareName   = 'coapp*'         # part of/whole software name, for uninstall registry lookup
+  softwareName   = 'vdhcoapp*'          # part of/whole software name, for uninstall registry lookup -- not independently verified against the real installed Add/Remove Programs entry, same uncertainty as before the rename
   checksum       = ''
   checksumType   = 'sha256'
   silentArgs     = '/S'

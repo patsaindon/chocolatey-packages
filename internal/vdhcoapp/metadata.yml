@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: vdhcoapp
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Renamed from the originally-scaffolded package id 'coapp' to 'vdhcoapp' on human review: Community's existing \"coapp\" package id is an unrelated, unmaintained package for CoApp.Tools.Powershell (coapp.org) -- not this software -- and reusing that id here would collide if Community's real 'coapp' package is ever internalized onto the same feed. This internal package tracks the vendor's own GitHub releases (aclap-dev/vdhcoapp) directly."
