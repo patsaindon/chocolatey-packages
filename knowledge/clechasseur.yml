@@ -1,0 +1,14 @@
+# Facts learned about this vendor's packages while onboarding or
+# updating them -- checksum field names, image-type/architecture
+# defaults, version-format quirks, known-good silent-install switches.
+# Read by the package-request agent before scaffolding (see
+# lookup_package_knowledge) so an already-solved quirk isn't
+# rediscovered by trial and error on the next package from the same
+# vendor. Written only locally by write_package_knowledge -- a human
+# reviews every change here in the same PR as the package it came
+# from, never a silent agent write. See docs/architecture.md section 6.8.
+
+source_url: "https://github.com/clechasseur/pathcopycopy/releases"
+notes: "First package from this vendor. GitHub releases page used as source_url. No silent_args found via winget (unavailable in this environment), Community package tools (no pathcopycopy/.install package on Community), or search_silent_install_switch (no match) -- still a generic '/S' placeholder, needs human research."
+last_verified_via: pathcopycopy
+last_verified: 2026-08-24
