@@ -121,7 +121,27 @@ function Invoke-AvScan {
     # worst case while staying well inside GitHub Actions' own default
     # 6-hour job timeout, so a genuinely stuck MpCmdRun (not just a long
     # queue) still fails the run rather than hanging it indefinitely.
-    $mpCmdRunMutex = New-Object System.Threading.Mutex($false, 'Global\ChocolateyPackagesMpCmdRunScan')
+    # A Global\-scoped named Mutex requires SeCreateGlobalPrivilege
+    # (Administrators/LocalSystem/NetworkService by default) -- found by
+    # testing a real CI run on a second self-hosted runner added mid-day:
+    # every package failed instantly with "Exception calling '.ctor' with
+    # '2' argument(s): Access to the path
+    # 'Global\ChocolateyPackagesMpCmdRunScan' is denied", because that
+    # runner's own service account doesn't hold the privilege the first
+    # runner's does. New-Object wraps the constructor's real
+    # UnauthorizedAccessException as a MethodInvocationException, so this
+    # catches broadly (by message, not type) rather than risk a type-match
+    # that silently doesn't fire on some PowerShell version. Falls back to
+    # the same name without the Global\ prefix (session-local scope) --
+    # still exactly what's needed here, since every AU background job on
+    # one runner already executes in that same logon session; Global\ was
+    # only ever a "why not be more correct" choice, not a requirement.
+    try {
+        $mpCmdRunMutex = New-Object System.Threading.Mutex($false, 'Global\ChocolateyPackagesMpCmdRunScan')
+    } catch {
+        Write-ScanLog "  MpCmdRun: Global\ mutex unavailable ($($_.Exception.Message)) -- falling back to a session-local mutex."
+        $mpCmdRunMutex = New-Object System.Threading.Mutex($false, 'ChocolateyPackagesMpCmdRunScan')
+    }
     $mpCmdRunMutexAcquired = $false
     try {
         $mpCmdRunMutexAcquired = $mpCmdRunMutex.WaitOne([TimeSpan]::FromMinutes(45))
