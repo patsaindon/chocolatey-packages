@@ -1,0 +1,15 @@
+# Facts learned about this vendor's packages while onboarding or
+# updating them -- checksum field names, image-type/architecture
+# defaults, version-format quirks, known-good silent-install switches.
+# Read by the package-request agent before scaffolding (see
+# lookup_package_knowledge) so an already-solved quirk isn't
+# rediscovered by trial and error on the next package from the same
+# vendor. Written only locally by write_package_knowledge -- a human
+# reviews every change here in the same PR as the package it came
+# from, never a silent agent write. See docs/architecture.md section 6.8.
+
+silent_args: /S
+source_url: "https://desktop.jitsi.org/index.html"
+notes: "silent_args is an unverified NSIS candidate switch only (get_installer_signals: High-confidence NSIS fingerprint on jitsi-meet.exe v2026.8.0, CandidateSwitches /S and /S /D=<path>) -- not confirmed against a real silent run. Community's old 'jitsi' package (stuck at 2018 MSI build 2.10.5550.20180405) used /qn MSI switches for a separate x86/x64 MSI distribution that the vendor no longer ships; current releases are a single jitsi-meet.exe NSIS installer from github.com/jitsi/jitsi-meet-electron, not an MSI, so the old MSI silentArgs do not apply. Confirm /S locally with scripts/New-SilentTestKit.ps1 before trusting unattended."
+last_verified_via: jitsi (package-request/jitsi)
+last_verified: 2026-08-24

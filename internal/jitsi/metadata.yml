@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: jitsi
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by version-mismatch triage of prospecting/community-version-reference.csv. Community's own jitsi package is stuck at 2.10.5550.20180405 (published 2018-04-05) while evergreen reports current releases via jitsi-meet-electron. Tracks the vendor's own Jitsi Meet Electron desktop app releases directly instead of the stale Community package."
