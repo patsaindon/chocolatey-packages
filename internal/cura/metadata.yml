@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: cura
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own Cura package is stuck at 19.4.1 (2555 days stale) while the vendor's real current release is confirmed at 5.13.0 (github.com/Ultimaker/Cura/releases)."
