@@ -1,0 +1,15 @@
+# Facts learned about this vendor's packages while onboarding or
+# updating them -- checksum field names, image-type/architecture
+# defaults, version-format quirks, known-good silent-install switches.
+# Read by the package-request agent before scaffolding (see
+# lookup_package_knowledge) so an already-solved quirk isn't
+# rediscovered by trial and error on the next package from the same
+# vendor. Written only locally by write_package_knowledge -- a human
+# reviews every change here in the same PR as the package it came
+# from, never a silent agent write. See docs/architecture.md section 6.8.
+
+silent_args: /quiet /passive /norestart
+source_url: "https://www.techsmith.com/download/snagit/"
+notes: "silent_args found via search_silent_install_switch (ManageEngine catalog, Snagit 2026 x64 26.3.0 entry: 'snagit.exe /quiet /passive /norestart') -- winget's get_winget_package_manifest was unavailable in this environment (spawn winget ENOENT) and Community's techsmithsnagit package has no real install logic to read (get_community_package_tools found nothing). Not yet locally verified against a real installer -- recommend confirming with scripts/New-SilentTestKit.ps1 before trusting unattended."
+last_verified_via: techsmithsnagit
+last_verified: 2026-08-24

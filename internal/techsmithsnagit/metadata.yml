@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: techsmithsnagit
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv (evergreen-api cross-reference, scripts/Update-CommunityVersionReference.ps1). Community's own techsmithsnagit package is stuck at 12.3.1 (published 2015-03-19, 4175 days stale) while the vendor is real at 26.3.1 -- tracked directly via a real au_GetLatest instead of Community's stalled package."
