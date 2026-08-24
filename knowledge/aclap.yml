@@ -9,6 +9,11 @@
 # from, never a silent agent write. See docs/architecture.md section 6.8.
 
 silent_args: /S
+product_description: "VideoDownloadHelper Companion App (CoApp) -- the native helper application the VideoDownloadHelper browser extension (Firefox/Chrome) uses to merge, convert, and save downloaded video/audio streams to disk."
+installer_type: exe
+installer_framework: NSIS
+silent_args_source: installer_signals
+silent_args_verified: false
 source_url: "https://github.com/aclap-dev/vdhcoapp/releases"
 notes: "silent_args '/S' is a framework-typical guess only -- installer (vdhcoapp-windows-x86_64-installer.exe v2.0.19) fingerprinted as NSIS (Nullsoft) via get_installer_signals with High confidence, candidate switches '/S' and '/S /D=<install path>'; NOT confirmed by real testing yet -- verify with scripts/New-SilentTestKit.ps1 before trusting unattended. winget (get_winget_package_manifest) is unavailable in this environment (spawn ENOENT for both a name search and the exact id 'ACLAP.DownloadHelperCoApp'), so that step could not be tried. Community's package id 'coapp' is a same-name coincidence for unrelated software (CoApp.Tools.Powershell from coapp.org, installed via msi /quiet from downloads.coapp.org) -- its detectedSilentArgs/script must NOT be reused for this vendor's packages."
 last_verified_via: vdhcoapp (package-request/coapp, renamed on human review to avoid colliding with Community's unrelated 'coapp' package id)
