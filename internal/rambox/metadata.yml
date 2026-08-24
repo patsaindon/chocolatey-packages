@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: rambox
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by version-mismatch triage of prospecting/community-version-reference.csv. Community's own rambox package is stuck at 0.7.7 (2143 days stale). Vendor's real current release (per evergreen-api) is 2.7.1, tracking the newer proprietary rambox.app build. The obvious GitHub source (github.com/ramboxapp/community-edition) is archived/read-only since April 2022, capped at v0.8.0 and points users to rambox.app instead -- so rambox.app/download is used as source_url instead of the dead GitHub repo."
