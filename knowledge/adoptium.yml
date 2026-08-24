@@ -19,7 +19,7 @@ silent_args: "/qn /norestart"
 installer_type: msi
 installer_framework: MSI
 silent_args_source: community_script
-silent_args_verified: true
+silent_args_verified: false
 notes: "evergreen-api.stealthpuppy.com's AdoptiumTemurin entries expose the checksum under 'Checksum', not 'Sha256' -- confirmed by testing against a different vendor (7-Zip) that does use 'Sha256', so this isn't the universal field name. ImageType has both 'jdk' and 'jre' entries per version; this project's internal Temurin packages want the JDK. Version strings can look like '25.0.4.1+1-LTS' -- NuGet/choco rejects the '-LTS' suffix and the '+build' segment, and some versions have more numeric segments than NuGet's 4-segment limit even after stripping those, so au_GetLatest should still fail loudly rather than silently truncate if that happens. silent_args is the standard MSI-based Adoptium installer switches, confirmed from temurin17's real, already-reviewed chocolateyinstall.ps1. source_url backfilled from temurin17/temurin25's own already-reviewed nuspec <projectUrl> (evergreen_app_name already seeds this automatically for every Adoptium package when it's passed, so this mainly matters as a fallback for a request that doesn't specify it)."
 last_verified: "2026-08-22"
 last_verified_via: "temurin17 (backfilled from its real chocolateyinstall.ps1, PR #4)"

@@ -41,7 +41,7 @@ just its structured summary:
 | Field | Values | Meaning |
 |---|---|---|
 | `installer_type` | `msi` / `exe` / `portable` | What `chocolateyinstall.ps1`'s `fileType` (or `package_kind`) should be — a portable binary has no installer at all, confirmed by testing that running one through the installer path hangs or behaves unpredictably (see `handle-package-request.yml`). |
-| `installer_framework` | `MSI` / `NSIS` / `WiX` / `InstallShield` / `none` | The installer-building toolkit, when known — `none` for `portable`. `MSI` alone (not `WiX`) means it's a real Windows Installer package but the specific authoring tool wasn't identified; `WiX` means `get_installer_signals` (or direct inspection) found WiX-specific markers (e.g. `WixUI` properties) in the MSI's own tables. |
+| `installer_framework` | `MSI` / `NSIS` / `WiX` / `InstallShield` | The installer-building toolkit, when known — omitted entirely for `portable` (see below), never a `none` value. `MSI` alone (not `WiX`) means it's a real Windows Installer package but the specific authoring tool wasn't identified; `WiX` means `get_installer_signals` (or direct inspection) found WiX-specific markers (e.g. `WixUI` properties) in the MSI's own tables. |
 | `silent_args_source` | `winget` / `community_script` / `installer_signals` / `catalog_search` / `generic_default` | Where `silent_args` actually came from — mirrors the discovery chain's own trust tiers in `handle-package-request.yml`: `winget`/`community_script` read a real, working source; `installer_signals` is a framework-typical guess from the file itself (an MSI's own `RecommendedCommandLine` property is stronger evidence than a bare NSIS/WiX fingerprint, but still not execution-tested); `catalog_search` is a best-effort snapshot-page match (see `prospecting/README.md`'s own caveat on this same tier for `search_silent_install_switch`); `generic_default` means nothing vendor-specific was found and `scaffold_internal_package`'s own framework-generic fallback was used as-is. |
 | `silent_args_verified` | `true` / `false` | Whether a human has actually run the installer unattended locally (`scripts/New-SilentTestKit.ps1`, `docs/silent-switch-verification.md`) and confirmed `silent_args` really works — as opposed to just being sourced from somewhere plausible. Every file recorded before this had this at `false` in practice (none had been through that check yet) — flip to `true` only after someone actually does it, and say so in `notes`/`last_verified_via`. |
 
@@ -64,3 +64,14 @@ pushes to this directory on its own.** See `docs/architecture.md` section
 Vendor slugs are freeform (the agent picks one, e.g. `adoptium`) — reuse
 the same slug across every package from that vendor so knowledge
 accumulates under it instead of scattering across near-duplicate files.
+**This assumes the slug's packages are all the same underlying product
+or product family** (e.g. every Adoptium package is some version of the
+same Temurin JDK) — every field here, `product_description` most
+visibly, gets reused verbatim for the next package under that slug. A
+vendor that ships more than one genuinely different product needs a
+slug per product, not one shared slug — otherwise the wrong product's
+description (or silent_args/source_url) can end up in a later package's
+nuspec unnoticed. `scaffold_internal_package`'s own return value flags
+whenever `description` was auto-filled from here rather than passed
+explicitly, specifically so the human reviewing that PR has a concrete
+prompt to double-check it's still accurate for *this* package.

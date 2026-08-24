@@ -14,7 +14,7 @@ silent_args: /qn /norestart /quiet
 installer_type: msi
 installer_framework: MSI
 silent_args_source: community_script
-silent_args_verified: true
+silent_args_verified: false
 notes: "MSI installer (Alacritty-vX.Y.Z-installer.msi), FileType msi. silent_args confirmed from Community package 'alacritty.install' chocolateyInstall.ps1 (real, working script) -- PackageArgs.SilentArgs = '/qn /norestart /quiet'. Evergreen app name is 'Alacritty'; publishes both an x86 portable .exe and an x86 .msi installer side by side (InstallerType 'Portable' vs 'Default') -- this internal package tracks the .msi."
 last_verified_via: alacritty (package-request/alacritty)
 last_verified: 2026-08-23

@@ -517,7 +517,7 @@ export async function handler({
     [/<authors>CHANGE_ME<\/authors>/, `<authors>${effectiveVendorName}</authors>`],
     [/<owners>CHANGE_ME<\/owners>/, `<owners>${owner_team}</owners>`],
     [/<packageSourceUrl>CHANGE_ME<\/packageSourceUrl>/, `<packageSourceUrl>${packageSourceUrl}</packageSourceUrl>`],
-    [/<description>CHANGE_ME<\/description>/, `<description>${productDescription}</description>`],
+    [/<description>CHANGE_ME<\/description>/, `<description>${escapeXmlAttr(productDescription)}</description>`],
     [/<tags>internal<\/tags>/, `<tags>${tags}</tags>`],
     // <projectUrl> specifically always gets *some* value, even when no
     // real vendor page was found anywhere -- found by testing (a real
@@ -672,6 +672,11 @@ Get-ChocolateyWebFile @packageArgs
         nuspec: {
           title: `${effectiveTitle}${title ? " (explicit)" : appIndexEntry ? " (from evergreen's app index)" : " (prettified package_id — pass 'title' explicitly if this doesn't read naturally)"}`,
           authors: `${effectiveVendorName}${vendor_name ? " (explicit)" : appIndexEntry ? " (from evergreen's app index)" : " (fell back to owner_team — pass 'vendor_name' if this software has a different real publisher)"}`,
+          description: description
+            ? `${productDescription} (explicit)`
+            : knowledgeFacts?.product_description
+              ? `${productDescription} (from knowledge/${vendor}.yml — a vendor slug can cover more than one real product; confirm this description still describes *this* package before merging, not just the last one from this vendor)`
+              : `${productDescription} (generic placeholder — pass 'description' explicitly)`,
           projectUrl: effectiveProjectUrl
             ? `${effectiveProjectUrl}${source_url ? " (explicit)" : appIndexEntry ? " (from evergreen's app index)" : ` (from knowledge/${vendor}.yml)`}`
             : `fell back to this package's own packageSourceUrl (${packageSourceUrl}) — not a real vendor page; pass 'source_url' for a real one`,
