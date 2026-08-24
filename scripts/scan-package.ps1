@@ -21,6 +21,31 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Mirrors every diagnostic line this script prints to the same fixed log
+# file update.ps1's own au_BeforeUpdateLog already writes to
+# (test-internal-packages.yml's "Show Nexus-mirror diagnostic log" step
+# dumps it unconditionally, if: always()) -- found missing by a real CI
+# failure (vdhcoapp, 2026-08-24): a scan genuinely failed ("Scan failed
+# for ...vdhcoapp-win7-x86_64-installer.exe. See output above."), but
+# every Write-Host line this script had printed to explain *why* --
+# which AV/CVE check failed, grype's own VULN lines -- was gone from the
+# captured job log by the time CI surfaced the error, because AU
+# discards a failed package's own captured output stream (the same
+# known limitation au_BeforeUpdateLog itself already works around for
+# au_BeforeUpdate's own messages -- this script just never had the same
+# treatment). Best-effort: a log write failing here must never fail the
+# scan itself, so errors are swallowed silently.
+function Write-ScanLog {
+    param([string]$Message)
+    Write-Host $Message
+    try {
+        $line = "[$([DateTime]::UtcNow.ToString('o'))] [scan-package] $Message"
+        Add-Content -Path (Join-Path ([System.IO.Path]::GetTempPath()) 'nexus-mirror-debug.log') -Value $line -Encoding utf8 -ErrorAction Stop
+    } catch {
+        # Logging is a diagnostic nicety, not a scan requirement.
+    }
+}
+
 # Targets:
 #   - Nexus Repository OSS (no Nexus IQ license) — see docs/architecture.md section 6.7.
 #   - AV: Windows Defender via MpCmdRun.exe (built into Windows, no extra license).
@@ -53,7 +78,7 @@ function Invoke-AvScan {
         throw "MpCmdRun.exe not found. Windows Defender must be installed and enabled on this runner (or swap this function for whatever AV product is in use)."
     }
 
-    Write-Host "  AV scan: $FilePath"
+    Write-ScanLog "  AV scan: $FilePath"
     # Same 2>&1 redirection as Invoke-VulnScan's grype call, and for the
     # same reason: an unredirected stderr line from this native command
     # would, under this script's own $ErrorActionPreference = 'Stop', be
@@ -78,7 +103,7 @@ function Invoke-VulnScan {
 
     $reportPath = [System.IO.Path]::GetTempFileName()
     try {
-        Write-Host "  Grype scan: $ExtractedDir"
+        Write-ScanLog "  Grype scan: $ExtractedDir"
         # Explicitly redirects stderr (2>&1) rather than leaving it
         # unredirected -- found by testing a real CI-only failure: with
         # $ErrorActionPreference = 'Stop' (set at the top of this script),
@@ -96,8 +121,8 @@ function Invoke-VulnScan {
         # logged plainly below.
         $grypeOutput = & grype "dir:$ExtractedDir" -o json --file $reportPath --fail-on $MinSeverity 2>&1
         $grypeExitCode = $LASTEXITCODE
-        $grypeOutput | ForEach-Object { Write-Host "  grype: $_" }
-        Write-Host "  Grype exit code: $grypeExitCode"
+        $grypeOutput | ForEach-Object { Write-ScanLog "  grype: $_" }
+        Write-ScanLog "  Grype exit code: $grypeExitCode"
         $report = Get-Content $reportPath -Raw | ConvertFrom-Json
 
         $severityOrder = @('Negligible', 'Low', 'Medium', 'High', 'Critical')
@@ -108,7 +133,7 @@ function Invoke-VulnScan {
         })
 
         foreach ($m in $flagged) {
-            Write-Host "  VULN: $($m.vulnerability.id) [$($m.vulnerability.severity)] in $($m.artifact.name)@$($m.artifact.version)"
+            Write-ScanLog "  VULN: $($m.vulnerability.id) [$($m.vulnerability.severity)] in $($m.artifact.name)@$($m.artifact.version)"
         }
 
         # grype's --fail-on already sets a non-zero exit code when matches meet
@@ -126,10 +151,10 @@ if ($PSCmdlet.ParameterSetName -eq 'RawFile') {
         throw "No such file: $RawFilePath"
     }
     $rawFile = Get-Item -LiteralPath $RawFilePath
-    Write-Host "Scanning $($rawFile.Name) (raw file)..."
+    Write-ScanLog "Scanning $($rawFile.Name) (raw file)..."
 
     if (-not (Invoke-AvScan -FilePath $rawFile.FullName)) {
-        Write-Host "  FAIL: AV threat detected in $($rawFile.Name)"
+        Write-ScanLog "  FAIL: AV threat detected in $($rawFile.Name)"
         $failed = $true
     } else {
         # Grype scans a whole directory's contents -- copied into its own
@@ -141,7 +166,7 @@ if ($PSCmdlet.ParameterSetName -eq 'RawFile') {
         try {
             Copy-Item $rawFile.FullName -Destination $isolatedDir
             if (-not (Invoke-VulnScan -ExtractedDir $isolatedDir)) {
-                Write-Host "  FAIL: vulnerability at or above '$MinSeverity' found in $($rawFile.Name)"
+                Write-ScanLog "  FAIL: vulnerability at or above '$MinSeverity' found in $($rawFile.Name)"
                 $failed = $true
             }
         } finally {
@@ -153,7 +178,7 @@ if ($PSCmdlet.ParameterSetName -eq 'RawFile') {
         Write-Error "Scan failed for $RawFilePath. See output above."
         exit 1
     }
-    Write-Host "$($rawFile.Name) passed AV + vulnerability (>= $MinSeverity) scanning."
+    Write-ScanLog "$($rawFile.Name) passed AV + vulnerability (>= $MinSeverity) scanning."
     exit 0
 }
 
@@ -163,10 +188,10 @@ if (-not $packages) {
 }
 
 foreach ($pkg in $packages) {
-    Write-Host "Scanning $($pkg.Name)..."
+    Write-ScanLog "Scanning $($pkg.Name)..."
 
     if (-not (Invoke-AvScan -FilePath $pkg.FullName)) {
-        Write-Host "  FAIL: AV threat detected in $($pkg.Name)"
+        Write-ScanLog "  FAIL: AV threat detected in $($pkg.Name)"
         $failed = $true
         continue
     }
@@ -180,7 +205,7 @@ foreach ($pkg in $packages) {
         Remove-Item $zipCopy -ErrorAction SilentlyContinue
 
         if (-not (Invoke-VulnScan -ExtractedDir $extractDir)) {
-            Write-Host "  FAIL: vulnerability at or above '$MinSeverity' found in $($pkg.Name)"
+            Write-ScanLog "  FAIL: vulnerability at or above '$MinSeverity' found in $($pkg.Name)"
             $failed = $true
         }
     } finally {
@@ -193,5 +218,5 @@ if ($failed) {
     exit 1
 }
 
-Write-Host "All packages passed AV + vulnerability (>= $MinSeverity) scanning."
+Write-ScanLog "All packages passed AV + vulnerability (>= $MinSeverity) scanning."
 exit 0
