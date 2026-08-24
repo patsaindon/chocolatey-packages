@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: manictime
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own manictime package is stuck at 4.0.15 (published 2018-03-30, 3068 days stale) while the vendor is real at 2026.2.1.1 (ManicTime moved to a calendar-year version scheme)."

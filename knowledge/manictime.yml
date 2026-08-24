@@ -1,0 +1,15 @@
+# Facts learned about this vendor's packages while onboarding or
+# updating them -- checksum field names, image-type/architecture
+# defaults, version-format quirks, known-good silent-install switches.
+# Read by the package-request agent before scaffolding (see
+# lookup_package_knowledge) so an already-solved quirk isn't
+# rediscovered by trial and error on the next package from the same
+# vendor. Written only locally by write_package_knowledge -- a human
+# reviews every change here in the same PR as the package it came
+# from, never a silent agent write. See docs/architecture.md section 6.8.
+
+source_url: "https://www.manictime.com/download"
+version_sanitize: "ManicTime uses a calendar-year, 4-numeric-segment version scheme (e.g. '2026.2.1.1') -- right at NuGet/choco's 4-segment limit. The template au_GetLatest's default sanitization (`-replace '\+','.'` then a `^\d+(\.\d+){0,3}(-.+)?$` check) already accepts exactly 4 segments so this format passes as-is, but there's no headroom for a 5th segment if the vendor ever adds one."
+notes: "First package from this vendor (manictime.com, publisher Sepia Technologies). No silent_args found: winget unavailable in this environment, Community's own 'manictime' package is just a metapackage (no real chocolateyInstall.ps1 to read), and it wasn't on the ManageEngine silent-switch snapshot either -- scaffolded with the generic '/S' placeholder, needs human verification via New-SilentTestKit.ps1."
+last_verified_via: PR for internal/manictime (package-request/manictime)
+last_verified: 2026-08-24
