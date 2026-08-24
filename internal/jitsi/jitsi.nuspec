@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>jitsi</id>
+    <version>0.0.0</version>
+    <title>Jitsi Meet</title>
+    <authors>8x8, Inc. (Jitsi)</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://desktop.jitsi.org/index.html</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/jitsi</packageSourceUrl>
+    <description>Surfaced by version-mismatch triage of prospecting/community-version-reference.csv. Community's own jitsi package is stuck at 2.10.5550.20180405 (published 2018-04-05) while evergreen reports current releases via jitsi-meet-electron. Tracks the vendor's own Jitsi Meet Electron desktop app releases directly instead of the stale Community package.</description>
+    <tags>internal 8x8-inc-jitsi</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
