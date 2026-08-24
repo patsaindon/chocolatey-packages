@@ -8,7 +8,15 @@ $Options = [ordered]@{
     WhatIf        = $au_WhatIf                              #Whatif all packages
     Force         = $false                                  #Force all packages
     Timeout       = 100                                     #Connection timeout in seconds
-    UpdateTimeout = 1200                                    #Update timeout in seconds
+    # Raised from 1200 -- found by testing a real CI run straight after
+    # scan-package.ps1's MpCmdRun calls were serialized via a lock file:
+    # once every package queues for that one shared lock, a package near
+    # the back of the queue can wait past 20 minutes for its turn alone,
+    # and AU killed it with "Job terminated due to the 1200s
+    # UpdateTimeout" despite the lock itself never coming close to its
+    # own 45-minute cap. See test_all.ps1's matching change for the full
+    # rationale.
+    UpdateTimeout = 3600                                    #Update timeout in seconds
     Threads       = 10                                      #Number of background jobs to use
     Push          = $Env:au_Push -eq 'true'                 #Push to chocolatey
     PushAll       = $true                                   #Allow to push multiple packages at once
