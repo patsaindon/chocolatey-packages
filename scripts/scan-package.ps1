@@ -84,9 +84,32 @@ function Invoke-AvScan {
     # would, under this script's own $ErrorActionPreference = 'Stop', be
     # auto-promoted into an uncaught terminating exception regardless of
     # MpCmdRun's actual exit code.
-    & $mpCmdRun -Scan -ScanType 3 -File $FilePath -DisableRemediation 2>&1 | Out-Null
+    #
+    # Captured (not discarded via Out-Null) and logged below -- found by
+    # testing a real CI run: multiple unrelated, legitimate vendor
+    # installers got flagged with exit code 2 ("threat found") on this
+    # runner in a single day, one of them (the same exact binary, same
+    # run) passing on 3 of 5 repeated scans. A bare true/false gave no way
+    # to tell a real detection from Defender's own heuristic flakiness --
+    # this is the minimum needed to actually diagnose that.
+    $mpCmdRunOutput = & $mpCmdRun -Scan -ScanType 3 -File $FilePath -DisableRemediation 2>&1
     # Exit code 0 = clean, 2 = threat found. Anything else is an execution error.
     if ($LASTEXITCODE -eq 2) {
+        $mpCmdRunOutput | ForEach-Object { Write-ScanLog "  MpCmdRun: $_" }
+        # MpCmdRun's own console output rarely names the detected threat;
+        # Get-MpThreatDetection (the Defender PowerShell module, built into
+        # Windows alongside MpCmdRun.exe) is the actual source of that.
+        # Best-effort only -- never let a diagnostics lookup fail the scan
+        # verdict itself.
+        try {
+            $threat = Get-MpThreatDetection -ErrorAction Stop |
+                Sort-Object InitialDetectionTime -Descending | Select-Object -First 1
+            if ($threat) {
+                Write-ScanLog "  MpCmdRun: most recent detection -- ThreatID=$($threat.ThreatID) Resources=$($threat.Resources -join ', ')"
+            }
+        } catch {
+            Write-ScanLog "  MpCmdRun: Get-MpThreatDetection unavailable ($($_.Exception.Message))"
+        }
         return $false
     } elseif ($LASTEXITCODE -ne 0) {
         throw "MpCmdRun.exe exited with unexpected code $LASTEXITCODE while scanning $FilePath"
