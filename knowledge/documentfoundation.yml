@@ -9,6 +9,10 @@
 # from, never a silent agent write. See docs/architecture.md section 6.8.
 
 silent_args: /qn /norestart
+installer_type: msi
+installer_framework: MSI
+silent_args_source: catalog_search
+silent_args_verified: false
 source_url: "https://www.libreoffice.org/download/download-libreoffice/"
 notes: "LibreOffice ships as a real MSI (not exe) -- fileType in chocolateyinstall.ps1 must be 'msi'. silent_args '/qn /norestart' found via search_silent_install_switch (ManageEngine catalog, best-effort, not structurally verified) against all four LibreOffice MSI variants (x86/x64, main + helppack) at version 26.2.4 -- recommend a human confirm locally before trusting unattended. evergreen_app_name is 'LibreOffice'. CONFIRMED BUG (issue #60): an Architecture=x64-only au_GetLatest filter is not enough -- evergreen-api's x64 entries include language help packs (e.g. a filename containing 'helppack'), and 'Select-Object -First 1' with no further filter can pick one of those instead of the real installer. Any future LibreOffice-family package's au_GetLatest must also exclude URI matches for 'helppack' (and check for other non-installer variants the same way) alongside the architecture filter."
 last_verified_via: "libreoffice update.ps1 fix (issue #60)"

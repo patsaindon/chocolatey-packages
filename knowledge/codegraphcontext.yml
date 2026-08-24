@@ -9,6 +9,8 @@
 # from, never a silent agent write. See docs/architecture.md section 6.8.
 
 source_url: "https://github.com/CodeGraphContext/CodeGraphContext/releases"
+installer_type: portable
+installer_framework: none
 notes: "Portable binary, no installer -- package_kind is portable, chocolateyinstall.ps1 uses Get-ChocolateyWebFile (already correct from the original scaffolding run, confirmed by real download/SHA256/execution testing). No evergreen-api or Community Repository coverage. au_GetLatest uses the GitHub Releases API (api.github.com/repos/CodeGraphContext/CodeGraphContext/releases/latest) directly, fixed on human review after the original placeholder regex assumed an asset named '<id>-<version>.exe' -- the real Windows asset is 'cgc-windows.exe' (the tool's own short command name, not the package id, and no version in the filename at all), so Version must come from the release's own tag_name (stripped of its leading 'v'), not the filename."
 last_verified_via: "codegraphcontext package request (issue #13 / PR #14)"
 last_verified: 2026-08-24

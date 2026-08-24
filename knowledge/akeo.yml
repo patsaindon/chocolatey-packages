@@ -8,6 +8,8 @@
 # reviews every change here in the same PR as the package it came
 # from, never a silent agent write. See docs/architecture.md section 6.8.
 
+installer_type: portable
+installer_framework: none
 notes: "Rufus (rufus.ie) publishes no x64 build — only ARM64 and x86 — so au_GetLatest must filter evergreen's AkeoRufus feed on Architecture=x86. No real silent-install switch exists in practice: Rufus is a single portable .exe, and the Community 'rufus.install' package actually ships/installs an .appx via Add-AppxPackage rather than running any exe silently — winget lookup was also unavailable in this environment (spawn winget ENOENT) and the ManageEngine switch catalog has no entry for it. Human review (PR #24) decided package_kind should be 'portable', not 'installer': chocolateyinstall.ps1 uses Get-ChocolateyWebFile to place rufus.exe under tools\\ rather than Install-ChocolateyPackage with a guessed silent switch. Next Akeo package: default to portable unless there's real evidence of an actual installer."
 last_verified_via: rufus (package-request/rufus PR)
 last_verified: 2026-08-23

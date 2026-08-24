@@ -9,6 +9,10 @@
 # from, never a silent agent write. See docs/architecture.md section 6.8.
 
 silent_args: /S
+installer_type: exe
+installer_framework: NSIS
+silent_args_source: installer_signals
+silent_args_verified: false
 source_url: "https://github.com/nexu-io/open-design/releases"
 notes: silent_args (/S) is an unconfirmed NSIS-framework guess from get_installer_signals against open-design-0.20.2-win-x64-setup.exe (High confidence installer-framework match, not a confirmed switch) -- must be verified locally with scripts/New-SilentTestKit.ps1 before trusting unattended. No winget or Community Repository package exists for open-design; no evergreen-api match either, so au_GetLatest uses the GitHub Releases API (api.github.com/repos/nexu-io/open-design/releases/latest) directly. Two vendor-specific quirks that broke the first placeholder au_GetLatest and would bite the next nexu-io package too: (1) the Windows asset name has a '-win-x64-setup' suffix between version and extension (open-design-<version>-win-x64-setup.exe, not a bare '<id>-<version>.exe'); (2) the release tag itself is 'open-design-v<version>' (product name baked into the tag), not a plain 'v<version>' -- Version has to be pulled out of the tag with a \d+.\d+.\d+ match, not by stripping a prefix.
 last_verified_via: "open-design package request (issue #11)"

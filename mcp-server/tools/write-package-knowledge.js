@@ -13,7 +13,7 @@ export const config = {
     facts: z
       .record(z.string())
       .describe(
-        "Flat key/value facts to record or correct. Standard field names: 'checksum_field', 'image_type_default', 'architecture_default', 'version_sanitize' (au_GetLatest concerns), and 'silent_args' / 'source_url' (scaffold_internal_package reads these two back automatically via its own 'vendor' parameter). Include a 'notes' key (free text: what was learned and how it was confirmed) and a 'last_verified_via' key (the package id or PR this came from)."
+        "Flat key/value facts to record or correct. Standard field names: 'checksum_field', 'image_type_default', 'architecture_default', 'version_sanitize' (au_GetLatest concerns); 'silent_args' / 'source_url' (scaffold_internal_package reads these two back automatically via its own 'vendor' parameter); and, for the binary itself, 'installer_type' ('msi'/'exe'/'portable'), 'installer_framework' ('MSI'/'NSIS'/'WiX'/'InstallShield'/'none'), 'silent_args_source' (where silent_args came from: 'winget'/'community_script'/'installer_signals'/'catalog_search'/'generic_default') and 'silent_args_verified' (true only once a human has actually run scripts/New-SilentTestKit.ps1 against it -- false otherwise, never guess true) -- see knowledge/README.md's table for exactly what each value means. Omit the last three for a portable package (package_kind: 'portable') -- there's no installer or silent switch. Include a 'notes' key (free text: what was learned and how it was confirmed) and a 'last_verified_via' key (the package id or PR this came from)."
       ),
   },
 };
