@@ -8,6 +8,7 @@
 # reviews every change here in the same PR as the package it came
 # from, never a silent agent write. See docs/architecture.md section 6.8.
 
+product_description: "Xournal++ is a free, open-source handwriting notetaking application with PDF annotation support."
 silent_args: /S
 installer_type: exe
 installer_framework: NSIS

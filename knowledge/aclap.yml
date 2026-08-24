@@ -9,6 +9,7 @@
 # from, never a silent agent write. See docs/architecture.md section 6.8.
 
 silent_args: /S
+product_description: "VideoDownloadHelper Companion App (CoApp) -- the native helper application the VideoDownloadHelper browser extension (Firefox/Chrome) uses to merge, convert, and save downloaded video/audio streams to disk."
 installer_type: exe
 installer_framework: NSIS
 silent_args_source: installer_signals

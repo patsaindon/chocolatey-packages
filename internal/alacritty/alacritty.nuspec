@@ -8,7 +8,7 @@
     <owners>IT Operations</owners>
     <projectUrl>https://alacritty.org/</projectUrl>
     <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/alacritty</packageSourceUrl>
-    <description>Real end-to-end test using evergreen-api-tracked software, per the user's request to validate the pipeline with a few evergreen apps — deliberately picked to diversify beyond the JDK family (temurin17/temurin25) already tested. Alacritty publishes both a real .msi installer and a portable .exe side by side (InstallerType 'Default' vs 'Portable'); this package tracks the .msi installer.</description>
+    <description>Alacritty is a fast, cross-platform, GPU-accelerated terminal emulator focused on simplicity and performance. This package tracks the vendor's .msi installer.</description>
     <tags>internal</tags>
     <dependencies />
   </metadata>

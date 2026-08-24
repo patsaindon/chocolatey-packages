@@ -8,6 +8,7 @@
 # reviews every change here in the same PR as the package it came
 # from, never a silent agent write. See docs/architecture.md section 6.8.
 
+product_description: "Snagit is screen capture and screen recording software by TechSmith, for capturing, annotating, and sharing screenshots and screen recordings."
 silent_args: /quiet /passive /norestart
 installer_type: exe
 silent_args_source: catalog_search

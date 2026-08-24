@@ -8,7 +8,7 @@
     <owners>IT Operations</owners>
     <projectUrl>https://www.techsmith.com/download/snagit/</projectUrl>
     <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/techsmithsnagit</packageSourceUrl>
-    <description>Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv (evergreen-api cross-reference, scripts/Update-CommunityVersionReference.ps1). Community's own techsmithsnagit package is stuck at 12.3.1 (published 2015-03-19, 4175 days stale) while the vendor is real at 26.3.1 -- tracked directly via a real au_GetLatest instead of Community's stalled package.</description>
+    <description>Snagit is screen capture and screen recording software by TechSmith, for capturing, annotating, and sharing screenshots and screen recordings.</description>
     <tags>internal techsmith</tags>
     <dependencies />
   </metadata>

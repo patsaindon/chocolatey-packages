@@ -10,7 +10,7 @@ export const name = "scaffold_internal_package";
 export const config = {
   title: "Scaffold Internal Package",
   description:
-    "Copies internal/_template/ to internal/<package_id>/ and fills in the placeholders it can (id, owner, description, install script, update.ps1's releases URL, and a coherent title/authors/projectUrl/tags for the nuspec). Pass evergreen_app_name (from search_evergreen_app) to generate a real, working au_GetLatest AND to seed the nuspec's title/authors/projectUrl from evergreen's own app index, instead of a generic placeholder for either. Pass title/vendor_name explicitly to override or to fill these in for a non-evergreen package. Pass vendor (the same slug used with lookup_package_knowledge) to also seed silent_args/source_url from knowledge/<vendor>.yml when you haven't found a fresher value yourself this run — call lookup_package_knowledge first if you want to know what it'll use before scaffolding. Pass silent_args explicitly (e.g. from search_silent_install_switch or a real chocolateyInstall.ps1 via get_community_package_tools) to fill in a real silent-install flag; an explicit value always wins over the knowledge base. Anything left unfilled still needs a human to research before this package updates itself correctly.",
+    "Copies internal/_template/ to internal/<package_id>/ and fills in the placeholders it can (id, owner, description, install script, update.ps1's releases URL, and a coherent title/authors/projectUrl/tags for the nuspec). Pass evergreen_app_name (from search_evergreen_app) to generate a real, working au_GetLatest AND to seed the nuspec's title/authors/projectUrl from evergreen's own app index, instead of a generic placeholder for either. Pass title/vendor_name explicitly to override or to fill these in for a non-evergreen package. Pass description (a real one-or-two-sentence description of what the software does, for the nuspec) separately from notes (packaging rationale, for metadata.yml only) -- these used to be one field and most nuspecs ended up with packaging trivia as their <description> as a result. Pass vendor (the same slug used with lookup_package_knowledge) to also seed silent_args/source_url/product_description from knowledge/<vendor>.yml when you haven't found a fresher value yourself this run — call lookup_package_knowledge first if you want to know what it'll use before scaffolding. Pass silent_args explicitly (e.g. from search_silent_install_switch or a real chocolateyInstall.ps1 via get_community_package_tools) to fill in a real silent-install flag; an explicit value always wins over the knowledge base. Anything left unfilled still needs a human to research before this package updates itself correctly.",
   inputSchema: {
     package_id: z
       .string()
@@ -34,7 +34,18 @@ export const config = {
       .url()
       .optional()
       .describe("Where this software publishes releases, and the nuspec's <projectUrl> — falls back to evergreen's own homepage link when evergreen_app_name is given"),
-    notes: z.string().optional().describe("Short description / notes"),
+    description: z
+      .string()
+      .optional()
+      .describe(
+        "A real, human-readable description of what the software actually does (one or two sentences) — this is what ends up in the nuspec's <description>, shown to anyone browsing or installing this package. Distinct from 'notes': never packaging rationale like 'surfaced by X triage' or 'PR #N'. Falls back to knowledge/<vendor>.yml's own 'product_description' (pass 'vendor' to use it) when omitted, then to a generic placeholder — found by auditing real onboarded packages that most nuspecs ended up with their <description> being packaging trivia instead of anything useful to an installer, because this and 'notes' used to be the same field."
+      ),
+    notes: z
+      .string()
+      .optional()
+      .describe(
+        "Packaging rationale/provenance for metadata.yml's own notes field only (why this package exists, which issue/PR, staleness numbers, etc.) — never shown in the nuspec. Pass 'description' separately for that."
+      ),
     vendor: z
       .string()
       .optional()
@@ -360,6 +371,7 @@ export async function handler({
   vendor_name,
   source_url,
   notes,
+  description,
   vendor,
   evergreen_app_name,
   evergreen_image_type,
@@ -393,8 +405,6 @@ export async function handler({
     path.join(targetDir, `${package_id}.nuspec`)
   );
 
-  const description = notes || `Internal package for ${package_id}.`;
-
   // Fetched once, up front, so both the nuspec (title/authors/projectUrl)
   // and update.ps1 (au_GetLatest) can draw from the same evergreen data —
   // this was already being fetched by search_evergreen_app and then
@@ -427,6 +437,26 @@ export async function handler({
       // non-fatal
     }
   }
+
+  // Found by auditing real onboarded packages: notes (packaging rationale --
+  // "surfaced by version-mismatch triage of...", which PR/issue this came
+  // from) and description (what the software actually *does*, shown to
+  // anyone browsing/installing this package) used to be the same single
+  // field, so most nuspecs ended up with their <description> literally
+  // reading as internal packaging trivia instead of a real product
+  // description (e.g. geogebra.nuspec's real <description> was "Community's
+  // own geogebra package is stuck at 5.0.134..." -- true, but useless to
+  // someone deciding whether to install this). description is now its own
+  // parameter; knowledgeFacts.product_description (Section 6.8, same
+  // pattern as silent_args/source_url) is the next fallback so a vendor's
+  // real description only has to be found once across every package from
+  // them; the honest placeholder is the last resort, never packaging notes.
+  const productDescription = description || knowledgeFacts?.product_description || `Internal package for ${package_id}.`;
+  // metadata.yml's own notes field is packaging rationale/provenance, not
+  // shown to anyone installing the package -- keeps its old behavior of
+  // falling back to the description when the caller only ever passed one
+  // field (pre-existing calls that haven't been updated to pass both yet).
+  const packagingNotes = notes || productDescription;
 
   const effectiveTitle = title || appIndexEntry?.Application || prettifyPackageId(package_id);
   // Distinct from effectiveVendorName's owner_team fallback below: a tag
@@ -487,7 +517,7 @@ export async function handler({
     [/<authors>CHANGE_ME<\/authors>/, `<authors>${effectiveVendorName}</authors>`],
     [/<owners>CHANGE_ME<\/owners>/, `<owners>${owner_team}</owners>`],
     [/<packageSourceUrl>CHANGE_ME<\/packageSourceUrl>/, `<packageSourceUrl>${packageSourceUrl}</packageSourceUrl>`],
-    [/<description>CHANGE_ME<\/description>/, `<description>${description}</description>`],
+    [/<description>CHANGE_ME<\/description>/, `<description>${productDescription}</description>`],
     [/<tags>internal<\/tags>/, `<tags>${tags}</tags>`],
     // <projectUrl> specifically always gets *some* value, even when no
     // real vendor page was found anywhere -- found by testing (a real
@@ -510,7 +540,7 @@ export async function handler({
   await replaceInFile(path.join(targetDir, "metadata.yml"), [
     [/packageId: CHANGE_ME/, `packageId: ${package_id}`],
     [/owner: CHANGE_ME/, `owner: ${owner_team}`],
-    [/notes: ""/, `notes: "${description.replace(/"/g, '\\"')}"`],
+    [/notes: ""/, `notes: "${packagingNotes.replace(/"/g, '\\"')}"`],
   ]);
 
   const effectiveBinaryName = binary_name || package_id;

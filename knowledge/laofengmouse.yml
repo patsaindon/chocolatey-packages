@@ -8,6 +8,7 @@
 # reviews every change here in the same PR as the package it came
 # from, never a silent agent write. See docs/architecture.md section 6.8.
 
+product_description: "FlyingMouse Format is a free, offline Windows file converter that transforms between image, document, spreadsheet, presentation, PDF, audio, and video formats using bundled tools like FFmpeg and LibreOffice, with OCR and batch conversion support."
 silent_args: /S
 installer_type: exe
 installer_framework: NSIS

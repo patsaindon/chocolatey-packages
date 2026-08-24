@@ -8,6 +8,7 @@
 # reviews every change here in the same PR as the package it came
 # from, never a silent agent write. See docs/architecture.md section 6.8.
 
+product_description: "LibreOffice is a free and open-source office suite -- word processor, spreadsheet, presentation, and more -- developed by The Document Foundation."
 silent_args: /qn /norestart
 installer_type: msi
 installer_framework: MSI

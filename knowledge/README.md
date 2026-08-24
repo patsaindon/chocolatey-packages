@@ -9,6 +9,23 @@ flat-YAML convention as `metadata.yml` elsewhere in this repo (see
 `scripts/lib/SimpleYaml.ps1`) — no lists, no nested maps, deliberately
 simple so a file stays readable in a plain PR diff.
 
+**`product_description`** — a real, one-or-two-sentence description of
+what this vendor's software actually *does*, distinct from any package's
+own packaging-rationale `notes` (why this package exists, which
+issue/PR, staleness numbers). Found the same way as the binary facts
+below: most `internal/*/*.nuspec` files onboarded before this had their
+`<description>` — shown to anyone browsing or installing the package —
+literally reading as packaging trivia ("Surfaced by the version-mismatch
+triage of prospecting/community-version-reference.csv...") because
+`scaffold_internal_package` only ever had one field doing double duty as
+both. `scaffold_internal_package`'s own `vendor` parameter now reads
+`product_description` back automatically for its `description`
+parameter, the same way it already does for `silent_args`/`source_url` —
+worth recording once so the next package from the same vendor doesn't
+need its description rewritten from scratch (most useful for a vendor
+family like Adoptium/LibreOffice where multiple internal packages share
+the same underlying product).
+
 **Standard field names for the binary itself** — found by auditing every
 vendor file to date: this information was already being discovered and
 written down for each vendor (which installer format it ships, which

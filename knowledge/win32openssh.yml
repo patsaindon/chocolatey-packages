@@ -9,6 +9,7 @@
 # from, never a silent agent write. See docs/architecture.md section 6.8.
 
 source_url: "https://github.com/PowerShell/Win32-OpenSSH/releases"
+product_description: "Win32-OpenSSH is Microsoft's port of OpenSSH for Windows -- a full SSH client and server (sshd) for secure remote shell access and file transfer."
 silent_args: "/qn /norestart"
 installer_type: msi
 installer_framework: MSI

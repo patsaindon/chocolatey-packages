@@ -8,6 +8,7 @@
 # reviews every change here in the same PR as the package it came
 # from, never a silent agent write. See docs/architecture.md section 6.8.
 
+product_description: "Eclipse Temurin is a production-ready, TCK-certified OpenJDK distribution provided by the Eclipse Adoptium project -- a free, open-source Java runtime/JDK."
 evergreen_app_prefix: AdoptiumTemurin
 checksum_field: Checksum
 architecture_default: x64

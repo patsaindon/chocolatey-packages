@@ -8,6 +8,7 @@
 # reviews every change here in the same PR as the package it came
 # from, never a silent agent write. See docs/architecture.md section 6.8.
 
+product_description: "An open-source local-first desktop app that turns a coding agent (Claude Code/Codex/Cursor/etc.) into a design/prototyping engine."
 silent_args: /S
 installer_type: exe
 installer_framework: NSIS

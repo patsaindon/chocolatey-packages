@@ -8,6 +8,7 @@
 # reviews every change here in the same PR as the package it came
 # from, never a silent agent write. See docs/architecture.md section 6.8.
 
+product_description: "Angry IP Scanner is a fast, open-source, cross-platform network scanner that pings a range of IP addresses and reports which hosts are alive, along with hostname, MAC address, and open ports."
 silent_args: /S
 installer_type: exe
 silent_args_source: catalog_search

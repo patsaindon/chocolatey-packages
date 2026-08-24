@@ -8,6 +8,7 @@
 # reviews every change here in the same PR as the package it came
 # from, never a silent agent write. See docs/architecture.md section 6.8.
 
+product_description: "GeoGebra is free, interactive mathematics software for geometry, algebra, spreadsheets, graphing, statistics, and calculus, widely used in education."
 silent_args: /S
 installer_type: exe
 silent_args_source: community_script

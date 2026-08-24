@@ -8,6 +8,7 @@
 # reviews every change here in the same PR as the package it came
 # from, never a silent agent write. See docs/architecture.md section 6.8.
 
+product_description: "Alacritty is a fast, cross-platform, GPU-accelerated terminal emulator focused on simplicity and performance."
 silent_args: /qn /norestart /quiet
 installer_type: msi
 installer_framework: MSI
