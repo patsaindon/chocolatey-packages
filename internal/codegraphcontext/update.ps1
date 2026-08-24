@@ -17,18 +17,23 @@ function global:au_SearchReplace {
 }
 
 function global:au_GetLatest {
-    # TODO: point this at wherever this internal software actually publishes
-    # releases (an internal file share, artifact repo, or vendor page) and
-    # return at least URL32 + Version. See the AU README's "Public interface"
-    # section: https://github.com/majkinetor/AU#public-interface
-    $releases = 'https://github.com/CodeGraphContext/CodeGraphContext/releases'
-    $page = Invoke-WebRequest -Uri $releases -UseBasicParsing
+    # Real GitHub Releases API lookup, not a placeholder -- confirmed against
+    # the real releases page (tag v0.5.7). The Windows asset is
+    # 'cgc-windows.exe' (the binary's own short command name, not the
+    # package id at all), which the placeholder regex
+    # ('codegraphcontext-(?<version>[\d.]+)\.exe') could never have matched
+    # -- the PR's own original testing already confirmed this exact asset
+    # (downloaded, SHA256-verified, ran and reported "CodeGraphContext
+    # 0.5.7"), so no further verification of the asset name itself was
+    # needed here, just wiring it into a real lookup.
+    $releases = 'https://api.github.com/repos/CodeGraphContext/CodeGraphContext/releases/latest'
+    $latest = Invoke-RestMethod -Uri $releases -UserAgent 'chocolatey-packages-mcp-server'
+    $asset = $latest.assets | Where-Object name -eq 'cgc-windows.exe'
+    if (-not $asset) {
+        throw "No 'cgc-windows.exe' asset found on codegraphcontext's latest release ($($latest.tag_name)) -- did the vendor rename it?"
+    }
 
-    $re  = 'codegraphcontext-(?<version>[\d.]+)\.exe'
-    $url = $page.Links | Where-Object href -match $re | Select-Object -First 1 -ExpandProperty href
-    $version = ($url -split '-' | Select-Object -Last 1) -replace '\.exe$'
-
-    return @{ URL32 = $url; Version = $version }
+    return @{ URL32 = $asset.browser_download_url; Version = $latest.tag_name -replace '^v' }
 }
 
-update -ChecksumFor none
+update -ChecksumFor 32
