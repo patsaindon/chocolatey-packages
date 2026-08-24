@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: windows-exporter
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Evergreen-api name: PrometheusWindowsExporter — real current release confirmed at v0.31.8. AU-based internal package tracking the vendor's own GitHub releases directly."
