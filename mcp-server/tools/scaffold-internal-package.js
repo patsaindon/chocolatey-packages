@@ -226,6 +226,73 @@ async function buildEvergreenGetLatest(evergreenAppName, imageType, packageKind)
   return { code, imageType: preferred.ImageType, fileType: preferred.Type };
 }
 
+/** Extracts { owner, repo } from a github.com URL (releases page, repo
+ * root, etc.) — null if source_url isn't a github.com URL at all. */
+function parseGitHubRepo(url) {
+  if (!url) return null;
+  const match = url.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)/);
+  if (!match) return null;
+  return { owner: match[1], repo: match[2].replace(/\.git$/, "") };
+}
+
+/**
+ * Generates an au_GetLatest that calls the real GitHub Releases API
+ * (api.github.com/repos/<owner>/<repo>/releases/latest) instead of scraping
+ * the vendor's HTML releases page — used whenever source_url resolves to a
+ * github.com repo and neither evergreen nor Nexus-generic applies.
+ *
+ * Replaces what used to be a plain HTML-scrape placeholder
+ * ('<package_id>-<version>.exe' matched against Invoke-WebRequest's own
+ * $page.Links). Found broken by real testing on four separate packages in
+ * one day (doxx, open-design, flyingmouse-format, codegraphcontext,
+ * 2026-08-23/24): every one of them shipped with an au_GetLatest that could
+ * never have matched anything, and every one failed CI for exactly that
+ * reason before a human caught it. Two compounding problems, not one:
+ * GitHub's release page renders its own Assets list client-side, so a
+ * static-HTML scrape via Invoke-WebRequest -UseBasicParsing often doesn't
+ * even see the real asset links at all; and even when a human writes the
+ * regex by hand, real vendor asset names essentially never match a plain
+ * '<id>-<version>.exe' shape (extra platform/arch/'Setup' segments are the
+ * norm — 'cgc-windows.exe', 'FlyingMouse-Format-Setup-0.6.4-x64.exe',
+ * 'doxx-x86_64-pc-windows-msvc.msi' with no version in the filename at
+ * all). The JSON API sidesteps the first problem outright; the second one
+ * is inherently vendor-specific and still needs a human to fill in the
+ * real asset-name pattern from the real releases page — this generates a
+ * working, correctly-shaped starting point (real API call, Version from
+ * the release's own tag_name rather than the filename, matching the
+ * pattern already proven across all four fixes above) with that one
+ * pattern left as an explicit TODO, rather than a guess dressed up as an
+ * answer.
+ */
+function buildGitHubReleasesGetLatest(owner, repo, packageId) {
+  return `function global:au_GetLatest {
+    # Real GitHub Releases API lookup (JSON), not the vendor's HTML releases
+    # page -- see this function's own doc comment in scaffold-internal-
+    # package.js for why the HTML-scrape approach this replaced kept
+    # failing in practice.
+    #
+    # TODO: 'CHANGE_ME_ASSET_PATTERN' is a placeholder. Check the real
+    # releases page (https://github.com/${owner}/${repo}/releases/latest)
+    # for this vendor's actual Windows asset filename and replace it with a
+    # regex that matches it -- don't assume it looks like
+    # '${packageId}-<version>.exe'; recent real examples didn't. Also
+    # double-check the Version line below once you know the real tag
+    # format: stripping a leading 'v' is a reasonable default (matches
+    # most vendors) but some tag conventions bake the product name in too
+    # (e.g. '${packageId}-v1.2.3'), which needs a real version regex
+    # instead -- see this same function's shape already fixed for
+    # 'open-design' (internal/open-design/update.ps1) for a worked example.
+    $releases = 'https://api.github.com/repos/${owner}/${repo}/releases/latest'
+    $latest = Invoke-RestMethod -Uri $releases -UserAgent 'chocolatey-packages-mcp-server'
+    $asset = $latest.assets | Where-Object name -match 'CHANGE_ME_ASSET_PATTERN'
+    if (-not $asset) {
+        throw "No asset matching 'CHANGE_ME_ASSET_PATTERN' found on ${packageId}'s latest release ($($latest.tag_name)) -- fill in the real asset name/pattern from https://github.com/${owner}/${repo}/releases/latest."
+    }
+
+    return @{ URL32 = $asset.browser_download_url; Version = $latest.tag_name -replace '^v' }
+}`;
+}
+
 /**
  * Generates an au_GetLatest that reads the latest asset a human already
  * uploaded to a Nexus generic (raw-format) hosted repository, instead of
@@ -481,7 +548,33 @@ Get-ChocolateyWebFile @packageArgs
     ]);
   }
 
-  if (!usedEvergreen && !usedNexusGeneric) {
+  // A github.com source (the overwhelming majority of real requests so
+  // far) gets a real API-based au_GetLatest instead of the HTML-scrape
+  // placeholder below — see buildGitHubReleasesGetLatest's own doc comment
+  // for why the scrape approach kept failing in practice. Only the asset
+  // name pattern is left as a TODO; everything else in it is a real,
+  // working call.
+  const githubRepo = !usedEvergreen && !usedNexusGeneric ? parseGitHubRepo(effectiveProjectUrl) : null;
+  if (githubRepo) {
+    await replaceInFile(path.join(targetDir, "update.ps1"), [
+      [
+        /function global:au_GetLatest \{[\s\S]*?\n\}/,
+        buildGitHubReleasesGetLatest(githubRepo.owner, githubRepo.repo, package_id),
+      ],
+      // The generated au_GetLatest above doesn't return a Checksum32 (the
+      // API gives no checksum of its own) -- 'ChecksumFor none' would
+      // silently commit an empty checksum at pack time otherwise, the same
+      // class of bug fixed today in doxx/open-design/flyingmouse-format/
+      // codegraphcontext, all switched to this same 'ChecksumFor 32' so AU
+      // downloads and hashes the real asset itself.
+      [/update -ChecksumFor none/, "update -ChecksumFor 32"],
+    ]);
+  } else if (!usedEvergreen && !usedNexusGeneric) {
+    // Genuinely not a github.com source (an internal file share, a vendor
+    // page with no GitHub Releases at all, etc.) — nothing as reliable as
+    // a real API exists to fall back to, so this stays the same
+    // best-effort HTML-scrape placeholder as before, still needing a human
+    // to turn it into something real.
     await replaceInFile(path.join(targetDir, "update.ps1"), [
       ...(effectiveProjectUrl
         ? [[/\$releases = 'https:\/\/CHANGE_ME\/releases'/, `$releases = '${effectiveProjectUrl}'`]]
@@ -509,7 +602,9 @@ Get-ChocolateyWebFile @packageArgs
             ? `seeded from evergreen-api ('${evergreen_app_name}')`
             : evergreenError
               ? `evergreen_app_name given but lookup failed (${evergreenError}) — fell back to the generic placeholder`
-              : "generic placeholder — no evergreen_app_name given",
+              : githubRepo
+                ? `real GitHub Releases API call against ${githubRepo.owner}/${githubRepo.repo} — still has a CHANGE_ME_ASSET_PATTERN placeholder for the real asset name, fill in from https://github.com/${githubRepo.owner}/${githubRepo.repo}/releases/latest`
+                : "generic HTML-scrape placeholder — no evergreen_app_name given and source_url isn't a github.com repo",
         package_kind: effectivePackageKind,
         binary_name: effectivePackageKind === "portable" ? effectiveBinaryName : undefined,
         file_type: effectivePackageKind === "portable" ? undefined : evergreenFileType || "exe (default)",
@@ -535,7 +630,9 @@ Get-ChocolateyWebFile @packageArgs
             : "none declared",
         still_needs_manual_review: usedNexusGeneric
           ? "update.ps1's au_GetLatest reads from Nexus generic repo — confirm a human has actually uploaded a binary under the given path prefix, that NEXUS_GENERIC_READ_TOKEN (a 'username:password' or Nexus User Token pair) is configured wherever this package's AU update runs, and that the target repository is readable by whatever downloads the returned URL (anonymous read scoped to just this one repository is the tested approach — see docs/architecture.md)."
-          : "update.ps1's au_GetLatest — verify the architecture/version-matching logic (and the releases URL/regex, if not evergreen-seeded) against this vendor's real release page before merging.",
+          : githubRepo
+            ? `update.ps1's au_GetLatest calls the real GitHub Releases API but still has a literal 'CHANGE_ME_ASSET_PATTERN' placeholder — fill in a regex matching this vendor's real Windows asset name from https://github.com/${githubRepo.owner}/${githubRepo.repo}/releases/latest before this package can update itself unattended (also sanity-check the Version line's tag-parsing against the real tag format).`
+            : "update.ps1's au_GetLatest — verify the architecture/version-matching logic (and the releases URL/regex, if not evergreen-seeded) against this vendor's real release page before merging.",
       },
       null,
       2
