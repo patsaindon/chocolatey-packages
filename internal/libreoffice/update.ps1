@@ -92,11 +92,25 @@ function global:au_AfterUpdate($Package) {
 
 function global:au_GetLatest {
     # Seeded from evergreen-api.stealthpuppy.com (https://eucpilots.com/evergreen/api/)
-    # for 'LibreOffice' — verify the filter below still matches what
-    # this package actually wants to ship (was: Architecture=x64).
+    # for 'LibreOffice'.
+    #
+    # Filed as issue #60: the original Architecture=x64-only filter below
+    # matched whichever x64 variant evergreen-api happened to list first,
+    # which turned out to be a language help pack
+    # (LibreOffice_26.2.3_Win_x86-64_helppack_am.msi -- Amharic help
+    # files, not the actual office suite) rather than the real installer
+    # (LibreOffice_26.2.5_Win_x86-64.msi). knowledge/documentfoundation.yml
+    # already noted evergreen-api lists four x86/x64 x main/helppack MSI
+    # variants for this app -- that note just never became an actual
+    # filter condition here. Excluding by filename is the most robust
+    # match available (evergreen-api's schema for this app doesn't expose
+    # a separate InstallerType/variant field the way some other apps'
+    # entries do) since 'helppack' is the one substring confirmed, from
+    # both the wrong download and the vendor's own naming convention, to
+    # mark every non-installer variant.
     $releases = "https://evergreen-api.stealthpuppy.com/app/LibreOffice"
     $variants = Invoke-RestMethod -Uri $releases -UserAgent "chocolatey-packages-mcp-server"
-    $latest = $variants | Where-Object { $_.Architecture -eq 'x64' } | Select-Object -First 1
+    $latest = $variants | Where-Object { $_.Architecture -eq 'x64' -and $_.URI -notmatch 'helppack' } | Select-Object -First 1
     if (-not $latest) { throw "No matching evergreen-api variant found for LibreOffice." }
 
     # The checksum field name varies per app — found by testing: 7zip uses
