@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>libreoffice</id>
+    <version>0.0.0</version>
+    <title>LibreOffice</title>
+    <authors>The Document Foundation</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://www.libreoffice.org/download/download-libreoffice/</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/libreoffice</packageSourceUrl>
+    <description>Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own libreoffice package is stuck at 5.4.4 (published 2018-01-14, 3143 days stale) while the vendor is real at 26.2.3 -- a very large, widely-used office suite this stale is a real gap. LibreOffice ships a large MSI (~300+MB) -- expect a slower mirror/scan step.</description>
+    <tags>internal the-document-foundation</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

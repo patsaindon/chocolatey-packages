@@ -75,6 +75,12 @@ $options = [ordered]@{
 }
 
 
+# Refresh grype's vulnerability DB once, serially, before updateall's own
+# Threads=10 parallel package processing -- see
+# scripts/Initialize-GrypeDb.ps1 for the real CI failure (a DB-corrupting
+# race between concurrent scan-package.ps1 invocations) this avoids.
+& "$PSScriptRoot/scripts/Initialize-GrypeDb.ps1"
+
 $global:info = updateall -Name $Name -Options $Options
 
 $au_errors = $global:info | ? { $_.Error } | select -ExpandProperty Error

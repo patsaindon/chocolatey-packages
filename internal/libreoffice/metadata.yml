@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: libreoffice
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own libreoffice package is stuck at 5.4.4 (published 2018-01-14, 3143 days stale) while the vendor is real at 26.2.3 -- a very large, widely-used office suite this stale is a real gap. LibreOffice ships a large MSI (~300+MB) -- expect a slower mirror/scan step."
