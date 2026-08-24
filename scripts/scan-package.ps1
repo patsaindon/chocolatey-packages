@@ -106,17 +106,27 @@ function Invoke-AvScan {
     # empty despite the "detections" -- consistent with MpCmdRun's
     # engine/IPC not tolerating concurrent on-demand scans reliably
     # (spurious exit code 2) rather than genuine, repeatable detections.
-    # A generous 15-minute wait accommodates every scan in the queue
-    # ahead of this one rather than spuriously timing out under normal
-    # Threads=10 load; this only serializes MpCmdRun's own few-seconds
-    # scan call, not the download/upload around it, so total added wall
-    # time per run is bounded by (scan count) x (single scan duration).
+    # A generous wait accommodates every scan in the queue ahead of this
+    # one rather than spuriously timing out under normal Threads=10 load;
+    # this only serializes MpCmdRun's own scan call, not the
+    # download/upload around it, so total added wall time per run is
+    # bounded by (scan count) x (single scan duration), not (scan count)^2.
+    #
+    # 15 minutes was tried first and was too short -- found by testing a
+    # real CI run straight after this fix landed: it worked (zero AV false
+    # positives across 15 packages, versus 5-11 before), but 3 packages
+    # legitimately timed out waiting >15 minutes deep in a real queue of
+    # ~12 scans, and the package right behind them barely made it in at
+    # 16.7 minutes. 45 minutes gives real headroom above that observed
+    # worst case while staying well inside GitHub Actions' own default
+    # 6-hour job timeout, so a genuinely stuck MpCmdRun (not just a long
+    # queue) still fails the run rather than hanging it indefinitely.
     $mpCmdRunMutex = New-Object System.Threading.Mutex($false, 'Global\ChocolateyPackagesMpCmdRunScan')
     $mpCmdRunMutexAcquired = $false
     try {
-        $mpCmdRunMutexAcquired = $mpCmdRunMutex.WaitOne([TimeSpan]::FromMinutes(15))
+        $mpCmdRunMutexAcquired = $mpCmdRunMutex.WaitOne([TimeSpan]::FromMinutes(45))
         if (-not $mpCmdRunMutexAcquired) {
-            throw "Timed out after 15 minutes waiting for exclusive access to MpCmdRun.exe -- another scan appears stuck holding it."
+            throw "Timed out after 45 minutes waiting for exclusive access to MpCmdRun.exe -- another scan appears stuck holding it."
         }
         $mpCmdRunOutput = & $mpCmdRun -Scan -ScanType 3 -File $FilePath -DisableRemediation 2>&1
         $mpCmdRunExitCode = $LASTEXITCODE
