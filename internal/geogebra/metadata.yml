@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: geogebra
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own geogebra package is stuck at 5.0.134 (published 2015-07-20, 4052 days stale) while the vendor is real at 6.0.927.1 — a major-version gap."
