@@ -1,0 +1,14 @@
+# Facts learned about this vendor's packages while onboarding or
+# updating them -- checksum field names, image-type/architecture
+# defaults, version-format quirks, known-good silent-install switches.
+# Read by the package-request agent before scaffolding (see
+# lookup_package_knowledge) so an already-solved quirk isn't
+# rediscovered by trial and error on the next package from the same
+# vendor. Written only locally by write_package_knowledge -- a human
+# reviews every change here in the same PR as the package it came
+# from, never a silent agent write. See docs/architecture.md section 6.8.
+
+source_url: "https://github.com/PowerShell/Win32-OpenSSH/releases"
+notes: "Evergreen app name 'Win32OpenSSH' selects an .msi release variant, so scaffold_internal_package defaults silent_args to the generic MSI '/qn /norestart' -- this has NOT been independently confirmed (winget lookup failed in this environment, get_community_package_tools only found the old zip-based Chocolatey Community script with no real silent switch, and search_silent_install_switch had no catalog match). Treat silent_args as unconfirmed until a human verifies against a real downloaded .msi."
+last_verified_via: "win32-openssh (PR from issue #39)"
+last_verified: 2026-08-24
