@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: makemeadmin
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own makemeadmin package is stuck at 2.3.0 (2756 days stale) while the vendor's real current release is 2.4.1."

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>makemeadmin</id>
+    <version>0.0.0</version>
+    <title>Make Me Admin</title>
+    <authors>pseymour / Make Me Admin</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://github.com/pseymour/MakeMeAdmin/releases</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/makemeadmin</packageSourceUrl>
+    <description>Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own makemeadmin package is stuck at 2.3.0 (2756 days stale) while the vendor's real current release is 2.4.1.</description>
+    <tags>internal pseymour-make-me-admin</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
