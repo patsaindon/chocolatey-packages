@@ -1,0 +1,15 @@
+# Facts learned about this vendor's packages while onboarding or
+# updating them -- checksum field names, image-type/architecture
+# defaults, version-format quirks, known-good silent-install switches.
+# Read by the package-request agent before scaffolding (see
+# lookup_package_knowledge) so an already-solved quirk isn't
+# rediscovered by trial and error on the next package from the same
+# vendor. Written only locally by write_package_knowledge -- a human
+# reviews every change here in the same PR as the package it came
+# from, never a silent agent write. See docs/architecture.md section 6.8.
+
+silent_args: /qn /norestart
+source_url: "https://www.elgato.com/en/downloads"
+notes: "silent_args found via search_silent_install_switch (ManageEngine catalog entry for 'Elgato Camera Hub (MSI) (x64) (2.3.0.7229)': CameraHub_2.3.0.7229_x64.msi /qn /norestart) -- a best-effort catalog hit, not confirmed against a real installer run locally (elgato.com unreachable from this session). winget lookup errored (winget not available in this environment) rather than returning a real no-match, so it was not exhausted. Community's own 'hub' package (v2.14.2) was checked and confirmed to be an unrelated project (GitHub's 'hub' CLI, github/hub releases) -- NOT Elgato Camera Hub; do not reuse its install script/URL for this vendor. source_url is Elgato's general downloads hub page, not a verified direct Camera Hub link. au_GetLatest was seeded from evergreen-api app 'ElgatoCameraHub' instead."
+last_verified_via: elgato-camera-hub scaffold, package-request/elgato-camera-hub PR
+last_verified: 2026-08-24

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>elgato-camera-hub</id>
+    <version>0.0.0</version>
+    <title>Elgato Camera Hub</title>
+    <authors>Elgato</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://www.elgato.com/en/downloads</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/elgato-camera-hub</packageSourceUrl>
+    <description>Surfaced by version-mismatch triage of prospecting/community-version-reference.csv. Community's own 'hub' package is stuck at 2.14.2 (2362 days stale); vendor's real current release recorded at 2.3 in reference CSV.</description>
+    <tags>internal elgato</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

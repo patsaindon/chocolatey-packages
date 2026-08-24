@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: elgato-camera-hub
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by version-mismatch triage of prospecting/community-version-reference.csv. Community's own 'hub' package is stuck at 2.14.2 (2362 days stale); vendor's real current release recorded at 2.3 in reference CSV."
