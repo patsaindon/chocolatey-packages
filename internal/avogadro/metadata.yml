@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: avogadro
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own avogadro package is stuck at 1.2.0.20190217 (2744 days stale) while the vendor's real current release is confirmed at 2.0.0."
