@@ -16,6 +16,77 @@ function global:au_SearchReplace {
     }
 }
 
+function global:au_BeforeUpdateLog($Message) {
+    # Same fixed log file scripts/Publish-ToNexusGeneric.ps1 writes to --
+    # found by testing a real CI run that AU's own output handling can lose
+    # Write-Host entirely for a package whose processing throws, so this
+    # exists purely so a workflow step can dump the file unconditionally
+    # (`if: always()`) regardless of what AU itself does with the console.
+    $line = "[$([DateTime]::UtcNow.ToString('o'))] $Message"
+    Write-Host $line
+    Add-Content -Path (Join-Path ([System.IO.Path]::GetTempPath()) 'nexus-mirror-debug.log') -Value $line -Encoding utf8
+}
+
+function global:au_BeforeUpdate($Package) {
+    au_BeforeUpdateLog "[au_BeforeUpdate] ENTERED for $($Package.Name), URL32=$($global:Latest.URL32)"
+    # Mirrors the real binary au_GetLatest just resolved into Nexus generic
+    # (raw-format) hosted storage *before* au_SearchReplace writes anything
+    # above into chocolateyinstall.ps1 -- see docs/architecture.md section
+    # 15 ("generalizing the Nexus-mirror step") and
+    # scripts/Publish-ToNexusGeneric.ps1 for what this actually does
+    # (download, scan, upload).
+    #
+    # Missing here until now -- this package predates the Nexus-mirror
+    # generalization (added when this was still one of the first two
+    # internal packages, alongside temurin25) and was never retrofitted
+    # with this hook, which every package scaffolded since has had. Found
+    # by testing: chocolateyinstall.ps1's URL kept resolving to the real
+    # Adoptium vendor URL instead of Nexus no matter what au_GetLatest
+    # itself was changed to return, because nothing ever intercepted
+    # $Latest.URL32 before au_SearchReplace wrote it out.
+    #
+    # Skipped, not a hard failure, when NEXUS_MIRROR_BASE_URL isn't set --
+    # keeps this optional for an ad-hoc local run that hasn't configured
+    # it; every real workflow in this repo does. Also skipped if the URL
+    # already points at this same Nexus base.
+    if (-not $env:NEXUS_MIRROR_BASE_URL) {
+        Write-Warning "NEXUS_MIRROR_BASE_URL not set -- skipping the Nexus mirror step; $($Package.Name) will keep referencing its real vendor URL directly."
+        return
+    }
+    if ($global:Latest.URL32 -like "$($env:NEXUS_MIRROR_BASE_URL)*") {
+        au_BeforeUpdateLog "[au_BeforeUpdate] $($Package.Name): URL32 already points at the Nexus mirror base -- skipping (already mirrored, e.g. a paywalled package)."
+        return
+    }
+
+    au_BeforeUpdateLog "[au_BeforeUpdate] $($Package.Name): mirroring $($global:Latest.URL32) to Nexus"
+    $mirrored = & (Join-Path $PSScriptRoot '..' '..' 'scripts' 'Publish-ToNexusGeneric.ps1') `
+        -SourceUrl $global:Latest.URL32 `
+        -PackageId $Package.Name `
+        -Version $global:Latest.Version `
+        -NexusBaseUrl $env:NEXUS_MIRROR_BASE_URL `
+        -Repository $env:NEXUS_MIRROR_REPOSITORY
+
+    $global:Latest.URL32 = $mirrored.Url
+    $global:Latest.Checksum32 = $mirrored.Checksum
+    au_BeforeUpdateLog "[au_BeforeUpdate] $($Package.Name): mirrored to $($mirrored.Url)"
+}
+
+function global:au_AfterUpdate($Package) {
+    # Logs $LASTEXITCODE right before AU's own `choco pack` call -- a real
+    # CI-only failure happens somewhere after au_BeforeUpdate returns
+    # successfully but before any further AU output appears at all, and
+    # AU's own choco-pack-success check reads this same global,
+    # process-wide variable -- one a deeply-nested native call earlier in
+    # this same package's own processing (Grype, MpCmdRun, both run by
+    # au_BeforeUpdate's own mirror step) could leave at a stale, non-zero
+    # value that has nothing to do with choco pack's own real result.
+    # Reset to a known-clean 0 here, immediately before AU's own check
+    # would run, so a stale value from earlier native calls can't be
+    # mistaken for choco pack's own failure.
+    au_BeforeUpdateLog "[au_AfterUpdate] $($Package.Name): update_files completed, LASTEXITCODE was '$LASTEXITCODE' -- resetting to 0 before choco pack"
+    $global:LASTEXITCODE = 0
+}
+
 function global:au_GetLatest {
     # evergreen-api.stealthpuppy.com (https://eucpilots.com/evergreen/api/)
     # for 'AdoptiumTemurin17' — same shape as temurin25's own (already
