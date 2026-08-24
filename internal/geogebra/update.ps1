@@ -92,11 +92,20 @@ function global:au_AfterUpdate($Package) {
 
 function global:au_GetLatest {
     # Seeded from evergreen-api.stealthpuppy.com (https://eucpilots.com/evergreen/api/)
-    # for 'GeoGebraClassic' — verify the filter below still matches what
-    # this package actually wants to ship (was: Architecture=unknown).
+    # for 'GeoGebraClassic' — its entries carry no Architecture/ImageType/
+    # InstallerType field at all (confirmed by real testing: the original
+    # 'Architecture -eq ''' filter here could never match anything, since
+    # an empty string never equals a real -- or absent -- field value, and
+    # this package's real update run failed outright with "No matching
+    # evergreen-api variant found" even though scaffolding itself had just
+    # used a real variant successfully seconds earlier -- see
+    # scaffold-internal-package.js's buildEvergreenGetLatest for the fix
+    # that stops this from recurring for the next app in the same shape).
+    # Takes the first variant unconditionally; verify this is still right
+    # if GeoGebra's evergreen entry ever grows more than one variant.
     $releases = "https://evergreen-api.stealthpuppy.com/app/GeoGebraClassic"
     $variants = Invoke-RestMethod -Uri $releases -UserAgent "chocolatey-packages-mcp-server"
-    $latest = $variants | Where-Object { $_.Architecture -eq '' } | Select-Object -First 1
+    $latest = $variants | Select-Object -First 1
     if (-not $latest) { throw "No matching evergreen-api variant found for GeoGebraClassic." }
 
     # The checksum field name varies per app — found by testing: 7zip uses
