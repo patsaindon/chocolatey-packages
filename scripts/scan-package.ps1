@@ -92,9 +92,91 @@ function Invoke-AvScan {
     # run) passing on 3 of 5 repeated scans. A bare true/false gave no way
     # to tell a real detection from Defender's own heuristic flakiness --
     # this is the minimum needed to actually diagnose that.
-    $mpCmdRunOutput = & $mpCmdRun -Scan -ScanType 3 -File $FilePath -DisableRemediation 2>&1
+    #
+    # Serialized below -- the same root cause and fix shape as
+    # scripts/Initialize-GrypeDb.ps1's grype DB race:
+    # test_all.ps1/update_all.ps1 run Threads=10 packages in parallel
+    # (separate AU background-job processes, not just threads in one
+    # process -- an in-process lock alone did not stop this), each
+    # independently invoking MpCmdRun.exe, whose engine/IPC doesn't
+    # tolerate that reliably.
+    #
+    # 45 minutes of wait (below) came from testing: 15 minutes, tried
+    # first, worked (zero AV false positives across 15 packages, versus
+    # 5-11 before) but was too short for a real queue of ~12 scans -- 3
+    # packages legitimately timed out waiting, and the one right behind
+    # them barely made it in at 16.7 minutes. 45 minutes gives real
+    # headroom above that observed worst case while staying well inside
+    # GitHub Actions' own default 6-hour job timeout, so a genuinely stuck
+    # MpCmdRun (not just a long queue) still fails the run rather than
+    # hanging it indefinitely. This only serializes MpCmdRun's own scan
+    # call, not the download/upload around it, so total added wall time
+    # per run is bounded by (scan count) x (single scan duration), not
+    # (scan count)^2.
+    #
+    # A named System.Threading.Mutex -- Global\ or session-local alike --
+    # turned out not to be portable across this fleet's runners at all:
+    # found by testing real CI runs on a second self-hosted runner added
+    # mid-day, where even a plain (non-Global\) named mutex failed
+    # construction with "Exception calling '.ctor' with '2' argument(s):
+    # Access to the path 'ChocolateyPackagesMpCmdRunScan' is denied" --
+    # that runner's service account apparently can't create *any* named
+    # kernel object, global or session-local. Rather than chase further
+    # privilege differences between runners, this uses a plain lock file
+    # in %TEMP% instead: ordinary file I/O, which every runner in this
+    # fleet is already proven to do successfully (the debug log this
+    # function writes to via Write-ScanLog is itself proof). Windows
+    # enforces FileShare.None exclusively across processes, not just
+    # threads, so this gives the same cross-process serialization a mutex
+    # would -- confirmed a real problem in the first place by testing:
+    # test_all.ps1/update_all.ps1 run Threads=10 packages in parallel
+    # (separate AU background-job processes), each independently invoking
+    # MpCmdRun.exe, and its engine/IPC doesn't tolerate concurrent
+    # on-demand scans reliably (spurious exit code 2 -- 11 of 15 packages
+    # flagged in one real run alone, including two that had scanned clean
+    # minutes earlier, with Get-MpThreatDetection's own history staying
+    # empty throughout despite the "detections").
+    #
+    # A lock file surviving a crashed scan would otherwise deadlock every
+    # future run forever (unlike a Mutex, which the OS releases when its
+    # owning process dies) -- treated as abandoned and removed once older
+    # than 10 minutes, comfortably longer than any single real scan
+    # observed so far (the slowest so far: LibreOffice's ~300MB installer
+    # at a little over 3 minutes).
+    $mpCmdRunLockPath = Join-Path ([System.IO.Path]::GetTempPath()) 'ChocolateyPackagesMpCmdRunScan.lock'
+    $mpCmdRunLockStream = $null
+    $mpCmdRunLockDeadline = (Get-Date).AddMinutes(45)
+    while (-not $mpCmdRunLockStream) {
+        try {
+            $mpCmdRunLockStream = [System.IO.File]::Open($mpCmdRunLockPath, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+        } catch [System.IO.IOException] {
+            $lockAgeMinutes = $null
+            try {
+                $lockAgeMinutes = ((Get-Date) - (Get-Item -LiteralPath $mpCmdRunLockPath -ErrorAction Stop).LastWriteTimeUtc).TotalMinutes
+            } catch {
+                # Lock file vanished between the failed Open and this check
+                # (another scan just finished) -- just retry the Open.
+            }
+            if ($lockAgeMinutes -and $lockAgeMinutes -gt 10) {
+                Write-ScanLog "  MpCmdRun: lock file is over 10 minutes old -- treating it as abandoned by a crashed scan and removing it."
+                Remove-Item -LiteralPath $mpCmdRunLockPath -Force -ErrorAction SilentlyContinue
+                continue
+            }
+            if ((Get-Date) -ge $mpCmdRunLockDeadline) {
+                throw "Timed out after 45 minutes waiting for exclusive access to MpCmdRun.exe -- another scan appears stuck holding it."
+            }
+            Start-Sleep -Seconds 2
+        }
+    }
+    try {
+        $mpCmdRunOutput = & $mpCmdRun -Scan -ScanType 3 -File $FilePath -DisableRemediation 2>&1
+        $mpCmdRunExitCode = $LASTEXITCODE
+    } finally {
+        $mpCmdRunLockStream.Close()
+        Remove-Item -LiteralPath $mpCmdRunLockPath -Force -ErrorAction SilentlyContinue
+    }
     # Exit code 0 = clean, 2 = threat found. Anything else is an execution error.
-    if ($LASTEXITCODE -eq 2) {
+    if ($mpCmdRunExitCode -eq 2) {
         $mpCmdRunOutput | ForEach-Object { Write-ScanLog "  MpCmdRun: $_" }
         # MpCmdRun's own console output rarely names the detected threat;
         # Get-MpThreatDetection (the Defender PowerShell module, built into
@@ -111,8 +193,8 @@ function Invoke-AvScan {
             Write-ScanLog "  MpCmdRun: Get-MpThreatDetection unavailable ($($_.Exception.Message))"
         }
         return $false
-    } elseif ($LASTEXITCODE -ne 0) {
-        throw "MpCmdRun.exe exited with unexpected code $LASTEXITCODE while scanning $FilePath"
+    } elseif ($mpCmdRunExitCode -ne 0) {
+        throw "MpCmdRun.exe exited with unexpected code $mpCmdRunExitCode while scanning $FilePath"
     }
     return $true
 }

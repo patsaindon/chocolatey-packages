@@ -8,7 +8,7 @@
     <owners>IT Operations</owners>
     <projectUrl>https://rufus.ie/</projectUrl>
     <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/rufus</packageSourceUrl>
-    <description>Real end-to-end test using evergreen-api-tracked software, per the user's request to validate the pipeline with a few evergreen apps. Rufus is evergreen-tracked as "AkeoRufus". It publishes no x64 variant at all (only ARM64 and several x86 builds). Rufus itself is actually a single portable executable with no real installer/silent-install-switch concept in practice, despite evergreen's own data labeling its variants "Default" rather than "Portable" -- packaged here as portable.</description>
+    <description>Rufus is a free, portable utility for creating bootable USB drives -- formatting and writing ISO images (Windows installers, Linux distros, UEFI/BIOS boot utilities) without installing anything.</description>
     <tags>internal akeo-rufus</tags>
     <dependencies />
   </metadata>

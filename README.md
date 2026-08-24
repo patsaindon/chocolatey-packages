@@ -40,9 +40,9 @@ flowchart LR
 
 ## Status
 
-The pipeline described above is **implemented and has been validated end-to-end as real GitHub Actions runs** (`internalize-community-package.yml`, `refresh-internalized-packages.yml`, and the now-retired direct-promote workflow it superseded have each completed successfully on the self-hosted runner), plus the MCP server and a full headless-agent run against it. Three real bugs and one runner-environment issue were found and fixed by that testing, not just by reading the code — see [docs/architecture.md § 14](docs/architecture.md#14-implementation-status--roadmap) for the details and for what's still open (a real Nexus instance, exercising the new PR-gated promotion flow end-to-end, a real internal AU package to test against, and a few deliberately-scoped gaps against the original design).
+The pipeline described above is **implemented and has been validated end-to-end as real GitHub Actions runs** (`internalize-community-package.yml`, `refresh-internalized-packages.yml`, and the now-retired direct-promote workflow it superseded have each completed successfully on the self-hosted runner), plus the MCP server and a full headless-agent run against it. Three real bugs and one runner-environment issue were found and fixed by that testing, not just by reading the code — see [docs/architecture.md § 14](docs/architecture.md#14-implementation-status--roadmap) for the details. `STAGING_FEED_URL`/`PRODUCTION_FEED_URL` now point at real Nexus `nuget-hosted` repositories (no code changes needed for that swap — see below); what's still open is listed in architecture.md § 14.
 
-## Testing without a real Nexus
+## Testing locally without touching the real Nexus feeds
 
 Nothing in this pipeline calls a Nexus-specific API — every script talks plain `choco search`/`download`/`push`. That means a throwaway NuGet-compatible feed in Docker exercises the exact same code paths:
 

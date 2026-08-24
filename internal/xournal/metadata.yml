@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: xournal
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own xournal package is stuck at 0.4.8 (published 2017-10-13) while the vendor's real successor project (Xournal++, not the original abandoned Xournal) is at 1.3.7."

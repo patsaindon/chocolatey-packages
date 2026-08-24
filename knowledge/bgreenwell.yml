@@ -8,7 +8,12 @@
 # reviews every change here in the same PR as the package it came
 # from, never a silent agent write. See docs/architecture.md section 6.8.
 
+product_description: "doxx is a terminal tool to view .docx files without needing Microsoft Office."
 silent_args: /qn /norestart
+installer_type: msi
+installer_framework: WiX
+silent_args_source: installer_signals
+silent_args_verified: false
 source_url: "https://github.com/bgreenwell/doxx/releases"
 notes: "doxx.msi is a WiX-built MSI (ALLUSERS=1 already set, DiskPrompt/WixUI properties present). silent_args of /qn /norestart came from get_installer_signals reading the MSI's real Property table (RecommendedCommandLine), not from winget or a Community package -- neither had this package. Standard MSI silent switch, but not yet human-confirmed with scripts/New-SilentTestKit.ps1. Package kind is installer (msi), not portable/exe -- the initially-scaffolded fileType='exe' was wrong and fixed on human review. No evergreen-api coverage; au_GetLatest uses the GitHub Releases API (api.github.com/repos/bgreenwell/doxx/releases/latest) directly -- the Windows asset name (doxx-x86_64-pc-windows-msvc.msi) carries no version at all, so Version must come from the release's own tag_name (stripped of its leading 'v'), not from the filename."
 last_verified_via: "doxx package request (issue #9)"

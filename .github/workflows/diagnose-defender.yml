@@ -1,0 +1,76 @@
+name: Diagnose Windows Defender (self-hosted runner)
+# Read-only diagnostic, manually triggered. Added while investigating a
+# real, growing pattern of AV-scan false positives in
+# test-internal-packages.yml (scripts/scan-package.ps1's Invoke-AvScan):
+# seven separate, legitimate, previously-clean vendor installers were
+# flagged as threats on this runner in a single day, including one
+# (vdhcoapp) that passed 3 of 5 identical scans on the exact same bytes
+# within one run -- strong evidence of a Defender-side reliability
+# problem on this specific machine, not real detections.
+#
+# Never changes any Defender setting -- only reads and reports current
+# configuration (signature age, cloud-protection/MAPS state, real-time
+# protection, exclusions, engine/platform versions) so a human can decide
+# whether e.g. signatures are stale or cloud-delivered protection is
+# unreachable from this runner.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: [self-hosted, windows]
+    steps:
+      - name: Report Windows Defender configuration and status
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+
+          Write-Host "=== Get-MpComputerStatus ==="
+          try {
+              Get-MpComputerStatus | Format-List *
+          } catch {
+              Write-Host "Get-MpComputerStatus failed: $($_.Exception.Message)"
+          }
+
+          Write-Host ""
+          Write-Host "=== Get-MpPreference (relevant fields) ==="
+          try {
+              $pref = Get-MpPreference
+              $pref | Select-Object DisableRealtimeMonitoring, DisableCloudProtection, `
+                  MAPSReporting, SubmitSamplesConsent, CloudBlockLevel, CloudExtendedTimeout, `
+                  DisableBehaviorMonitoring, DisableIOAVProtection, SignatureAuGracePeriod, `
+                  ScanScheduleQuickScanTime, ExclusionPath, ExclusionExtension, ExclusionProcess |
+                  Format-List *
+          } catch {
+              Write-Host "Get-MpPreference failed: $($_.Exception.Message)"
+          }
+
+          Write-Host ""
+          Write-Host "=== Recent threat detections (last 20) ==="
+          try {
+              Get-MpThreatDetection -ErrorAction Stop |
+                  Sort-Object InitialDetectionTime -Descending |
+                  Select-Object -First 20 InitialDetectionTime, ThreatID, ProcessName, Resources |
+                  Format-Table -AutoSize -Wrap
+          } catch {
+              Write-Host "Get-MpThreatDetection failed: $($_.Exception.Message)"
+          }
+
+          Write-Host ""
+          Write-Host "=== MpCmdRun.exe -SignatureUpdate check (info only, does not apply) ==="
+          $mpCmdRun = Join-Path $env:ProgramFiles 'Windows Defender\MpCmdRun.exe'
+          if (Test-Path $mpCmdRun) {
+              & $mpCmdRun -SchedulerJob -q 2>&1 | Write-Host
+          } else {
+              Write-Host "MpCmdRun.exe not found at $mpCmdRun"
+          }
+
+          Write-Host ""
+          Write-Host "=== Runner identity (for correlating with any IP/network-based blocks) ==="
+          try {
+              (Invoke-RestMethod -Uri 'https://api.ipify.org?format=json' -TimeoutSec 10).ip |
+                  ForEach-Object { Write-Host "Outbound IPv4: $_" }
+          } catch {
+              Write-Host "Could not determine outbound IP: $($_.Exception.Message)"
+          }
