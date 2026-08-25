@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>clink</id>
+    <version>0.0.0</version>
+    <title>Clink</title>
+    <authors>Christopher Antos</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://github.com/chrisant996/clink/releases</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/clink</packageSourceUrl>
+    <description>Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own clink package is stuck at 0.4.9 (2945 days stale) while the vendor's real current release is v1.9.32.</description>
+    <tags>internal christopher-antos</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
