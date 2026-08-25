@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>windows-exporter</id>
+    <version>0.0.0</version>
+    <title>Prometheus Windows Exporter</title>
+    <authors>prometheus-community</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://github.com/prometheus-community/windows_exporter/releases</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/windows-exporter</packageSourceUrl>
+    <description>Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Evergreen-api name: PrometheusWindowsExporter — real current release confirmed at v0.31.8. AU-based internal package tracking the vendor's own GitHub releases directly.</description>
+    <tags>internal prometheus-community</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
