@@ -104,7 +104,7 @@ export const config = {
       .string()
       .optional()
       .describe(
-        "A .NET regex matched against au_getlatest_page_url's raw HTML, with two required named groups: '(?<url>...)' (the installer link's own href, e.g. matching inside a real 'href=\"...\"' attribute) and '(?<version>...)' (the version string, usually a sub-match inside the url group's own filename). Inferred by reading inspect_download_page's real output for this vendor -- never guessed from the package id alone. Generates a genuine scrape-based au_GetLatest instead of the generic 'assume the filename starts with the package id' placeholder. This is inherently less reliable than evergreen-api or a real vendor API (one page snapshot isn't a version history to test a pattern against) -- always say so explicitly in the PR body and flag it for human confirmation before the next real version bump, the same as an unconfirmed silent_args."
+        "A .NET regex matched against au_getlatest_page_url's raw HTML, with two required named groups: '(?<url>...)' (the installer link's own href, e.g. matching inside a real 'href=\"...\"' attribute) and '(?<version>...)' (the version string, usually a sub-match inside the url group's own filename). The generated au_GetLatest requires this to match EXACTLY ONE link on the page and throws otherwise -- make the pattern specific enough to pick out the one real Windows installer (not also matching, say, a macOS/Linux build or an older release still listed alongside the current one); a pattern too loose to be unambiguous is a bug in the pattern, not something to work around downstream. Inferred by reading inspect_download_page's real output for this vendor -- never guessed from the package id alone. Generates a genuine scrape-based au_GetLatest instead of the generic 'assume the filename starts with the package id' placeholder. This is inherently less reliable than evergreen-api or a real vendor API (one page snapshot isn't a version history to test a pattern against) -- always say so explicitly in the PR body and flag it for human confirmation before the next real version bump, the same as an unconfirmed silent_args."
       ),
     dependencies: z
       .array(
@@ -408,14 +408,31 @@ function buildHtmlScrapeGetLatest(pageUrl, linkPattern) {
     # history: CONFIRM this still matches after the vendor's next real
     # release before trusting this package to update itself unattended.
     $page = Invoke-WebRequest -Uri '${pageUrl}' -UseBasicParsing -UserAgent 'chocolatey-packages-mcp-server'
-    $match = [regex]::Match($page.Content, '${linkPattern.replace(/'/g, "''")}')
-    if (-not $match.Success -or -not $match.Groups['url'].Success -or -not $match.Groups['version'].Success) {
-        throw "No link on ${pageUrl} matched the expected (?<url>...)/(?<version>...) pattern -- the vendor's page layout or naming scheme may have changed; update this au_GetLatest by re-running inspect_download_page against it."
+    # [regex]::Matches (not the singular Match) -- a pattern that isn't
+    # specific enough to this vendor's page can match more than one real
+    # link (e.g. an x86 build alongside x64, or last release still listed
+    # next to the current one). Match would silently take whichever one
+    # happens to come first in the HTML, which can just as easily be the
+    # wrong architecture or a stale version -- fail loudly instead so a
+    # human tightens the pattern, rather than shipping a wrong download
+    # silently.
+    $matches = [regex]::Matches($page.Content, '${linkPattern.replace(/'/g, "''")}')
+    if ($matches.Count -ne 1) {
+        throw "Expected exactly one link on ${pageUrl} to match the (?<url>...)/(?<version>...) pattern, found $($matches.Count) -- the vendor's page layout may have changed, or the pattern isn't specific enough (e.g. matches more than one architecture/variant); update this au_GetLatest by re-running inspect_download_page against it."
     }
+    $match = $matches[0]
+    if (-not $match.Groups['url'].Success -or -not $match.Groups['version'].Success) {
+        throw "The pattern matched on ${pageUrl} but is missing its (?<url>...)/(?<version>...) named groups -- update this au_GetLatest by re-running inspect_download_page against it."
+    }
+    # Real HTML source can legally write a literal '&' in an href as
+    # '&amp;' -- decode before resolving, or a signed/tokenized download
+    # URL's query string comes out corrupted (same fix as
+    # inspect_download_page's own href handling, see its doc comment).
+    $decodedUrl = [System.Net.WebUtility]::HtmlDecode($match.Groups['url'].Value)
     # Resolve a relative href (e.g. '/downloads/app-1.2.3.exe') against the
     # page's own URL -- real vendor pages mix both absolute and relative
     # links, confirmed by testing inspect_download_page against several.
-    $url = [System.Uri]::new([System.Uri]'${pageUrl}', $match.Groups['url'].Value).AbsoluteUri
+    $url = [System.Uri]::new([System.Uri]'${pageUrl}', $decodedUrl).AbsoluteUri
 
     return @{
         URL32   = $url
