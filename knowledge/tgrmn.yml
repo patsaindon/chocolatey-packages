@@ -1,0 +1,20 @@
+# Facts learned about this vendor's packages while onboarding or
+# updating them -- checksum field names, image-type/architecture
+# defaults, version-format quirks, known-good silent-install switches.
+# Read by the package-request agent before scaffolding (see
+# lookup_package_knowledge) so an already-solved quirk isn't
+# rediscovered by trial and error on the next package from the same
+# vendor. Written only locally by write_package_knowledge -- a human
+# reviews every change here in the same PR as the package it came
+# from, never a silent agent write. See docs/architecture.md section 6.8.
+
+silent_args: /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+silent_args_source: community_script
+silent_args_verified: false
+source_url: "https://www.bulkrenameutility.co.uk/Download.php"
+installer_type: exe
+installer_framework: InstallShield
+product_description: Bulk Rename Utility is a Windows file-renaming tool that lets users batch-rename large numbers of files and folders using rules such as search-and-replace, numbering, case conversion, date/time stamping, and regular expressions.
+notes: "First package from this vendor (bulkrenameutility). No evergreen-api or GitHub Releases coverage found -- source_url is a plain vendor download page (Download.php) with no structured feed. get_winget_package_manifest failed (winget CLI unavailable in this environment, not a 'no match'). silent_args came from get_community_package_tools' detectedSilentArgs on the existing Community package bulkrenameutility (v4.1.0.1), matched verbatim in its chocolateyInstall.ps1 ($silentArgs = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-') -- Inno Setup-style switches (/SP- is Inno-specific), so installer_framework is a reasonable inference from the switch syntax itself, not independently confirmed via get_installer_signals. No tool named inspect_download_page exists in this toolset, and scaffold_internal_package has no au_getlatest_page_url/au_getlatest_link_pattern parameters -- au_GetLatest was scaffolded as the generic HTML-scrape placeholder and needs real human research against the vendor's Download.php page."
+last_verified_via: "bulkrenameutility (package-request #89)"
+last_verified: 2026-08-25

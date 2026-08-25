@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: bulkrenameutility
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Deliberately picked to validate PR #88's new capability end-to-end for real: a plain vendor download page with no evergreen-api coverage and no GitHub Releases (unlike every other internal package onboarded so far, which is one or the other) -- the exact gap inspect_download_page/scaffold_internal_package's au_getlatest_page_url/au_getlatest_link_pattern were built for."
