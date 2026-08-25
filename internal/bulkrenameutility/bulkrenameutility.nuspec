@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>bulkrenameutility</id>
+    <version>0.0.0</version>
+    <title>Bulk Rename Utility</title>
+    <authors>TGRMN Software</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://www.bulkrenameutility.co.uk/Download.php</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/bulkrenameutility</packageSourceUrl>
+    <description>Bulk Rename Utility is a Windows file-renaming tool that lets users batch-rename large numbers of files and folders using rules such as search-and-replace, numbering, case conversion, date/time stamping, and regular expressions.</description>
+    <tags>internal tgrmn-software</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
