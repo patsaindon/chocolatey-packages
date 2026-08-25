@@ -1,0 +1,15 @@
+# Facts learned about this vendor's packages while onboarding or
+# updating them -- checksum field names, image-type/architecture
+# defaults, version-format quirks, known-good silent-install switches.
+# Read by the package-request agent before scaffolding (see
+# lookup_package_knowledge) so an already-solved quirk isn't
+# rediscovered by trial and error on the next package from the same
+# vendor. Written only locally by write_package_knowledge -- a human
+# reviews every change here in the same PR as the package it came
+# from, never a silent agent write. See docs/architecture.md section 6.8.
+
+silent_args: /S
+source_url: "https://github.com/OpenChemistry/avogadroapp/releases"
+notes: "silent_args '/S' confirmed directly from Community's avogadro package chocolateyInstall.ps1 (fileType EXE, NSIS-style /S switch); source_url is the vendor's own GitHub releases page for avogadroapp."
+last_verified_via: avogadro (package-request/avogadro)
+last_verified: 2026-08-24

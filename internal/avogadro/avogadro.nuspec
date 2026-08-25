@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>avogadro</id>
+    <version>0.0.0</version>
+    <title>Avogadro</title>
+    <authors>Open Chemistry</authors>
+    <owners>IT Operations</owners>
+    <projectUrl>https://github.com/OpenChemistry/avogadroapp/releases</projectUrl>
+    <packageSourceUrl>https://github.com/patsaindon/chocolatey-packages/tree/main/internal/avogadro</packageSourceUrl>
+    <description>Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own avogadro package is stuck at 1.2.0.20190217 (2744 days stale) while the vendor's real current release is confirmed at 2.0.0.</description>
+    <tags>internal open-chemistry</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
