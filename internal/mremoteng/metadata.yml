@@ -1,0 +1,4 @@
+# Template — copy this folder to internal/<package-id>/ and fill in.
+packageId: mremoteng
+owner: IT Operations                  # owning team, drives notification routing
+notes: "Surfaced by the version-mismatch triage of prospecting/community-version-reference.csv. Community's own mRemoteNG package is stuck at 1.76.20.24615 (2691 days stale); vendor's real version has moved to 1.78.2 (currently a pre-release migrating to .NET 10 LTS). This internal AU package tracks the vendor's own release page directly."
