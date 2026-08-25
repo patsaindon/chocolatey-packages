@@ -16,6 +16,7 @@ import * as getCommunityPackageTools from "./tools/get-community-package-tools.j
 import * as getWingetPackageManifest from "./tools/get-winget-package-manifest.js";
 import * as getInstallerSignals from "./tools/get-installer-signals.js";
 import * as downloadInstallerFile from "./tools/download-installer-file.js";
+import * as inspectDownloadPage from "./tools/inspect-download-page.js";
 
 // Package-creation tools for the issue-triggered package request flow.
 // See docs/architecture.md and .github/workflows/handle-package-request.yml.
@@ -43,6 +44,7 @@ for (const tool of [
   getWingetPackageManifest,
   getInstallerSignals,
   downloadInstallerFile,
+  inspectDownloadPage,
 ]) {
   server.registerTool(tool.name, tool.config, tool.handler);
 }

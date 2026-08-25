@@ -93,6 +93,19 @@ export const config = {
       .string()
       .optional()
       .describe("Path prefix inside that repository under which every version of this package's binary gets uploaded, e.g. 'acme/licensed-app/'"),
+    au_getlatest_page_url: z
+      .string()
+      .url()
+      .optional()
+      .describe(
+        "For a non-evergreen, non-github.com, non-paywalled package only: the real download/release page au_GetLatest should scrape at update time, from reading it yourself with inspect_download_page -- typically the same as source_url, but pass this explicitly if the real download links live on a different page (e.g. source_url is a marketing homepage, the actual releases are on a /downloads subpage). Requires au_getlatest_link_pattern too; either alone is ignored."
+      ),
+    au_getlatest_link_pattern: z
+      .string()
+      .optional()
+      .describe(
+        "A .NET regex matched against au_getlatest_page_url's raw HTML, with two required named groups: '(?<url>...)' (the installer link's own href, e.g. matching inside a real 'href=\"...\"' attribute) and '(?<version>...)' (the version string, usually a sub-match inside the url group's own filename). The generated au_GetLatest requires this to match EXACTLY ONE link on the page and throws otherwise -- make the pattern specific enough to pick out the one real Windows installer (not also matching, say, a macOS/Linux build or an older release still listed alongside the current one); a pattern too loose to be unambiguous is a bug in the pattern, not something to work around downstream. Inferred by reading inspect_download_page's real output for this vendor -- never guessed from the package id alone. Generates a genuine scrape-based au_GetLatest instead of the generic 'assume the filename starts with the package id' placeholder. This is inherently less reliable than evergreen-api or a real vendor API (one page snapshot isn't a version history to test a pattern against) -- always say so explicitly in the PR body and flag it for human confirmation before the next real version bump, the same as an unconfirmed silent_args."
+      ),
     dependencies: z
       .array(
         z.object({
@@ -364,6 +377,70 @@ function buildNexusGenericGetLatest(baseUrl, repository, pathPrefix) {
 }`;
 }
 
+/**
+ * Generates an au_GetLatest that scrapes a real vendor download page for
+ * the current release, from a link pattern the calling agent already
+ * inferred by reading inspect_download_page's real output for this exact
+ * page -- never a guess made up from the package id, the same discipline
+ * buildGitHubReleasesGetLatest's own doc comment already established for
+ * why a blind '<id>-<version>.exe' shape kept failing in practice.
+ *
+ * Regexes the raw HTML directly rather than PowerShell's own
+ * Invoke-WebRequest -UseBasicParsing $page.Links -- confirmed unreliable
+ * for this even for github.com (a client-rendered Assets list simply
+ * isn't present in the static markup at all), which is exactly why
+ * GitHub Releases got its own real-API function instead of a scrape. A
+ * plain vendor HTML page has no equivalent API, so this is the least-bad
+ * option there -- but it's still only as good as the one page snapshot
+ * inspect_download_page saw, not a tested version history, which is why
+ * scaffold_internal_package's own tool description insists the calling
+ * agent flag this for human confirmation rather than presenting it as
+ * settled.
+ */
+function buildHtmlScrapeGetLatest(pageUrl, linkPattern) {
+  return `function global:au_GetLatest {
+    # Scrapes a real vendor download page (${pageUrl}) for the current
+    # release -- this vendor has no evergreen-api coverage, no
+    # github.com Releases API, and isn't a Nexus-hosted paywalled asset.
+    # The pattern below was inferred from actually reading this page's
+    # real HTML (inspect_download_page), not guessed from the package id
+    # -- but it's still only one page snapshot, not a tested version
+    # history: CONFIRM this still matches after the vendor's next real
+    # release before trusting this package to update itself unattended.
+    $page = Invoke-WebRequest -Uri '${pageUrl}' -UseBasicParsing -UserAgent 'chocolatey-packages-mcp-server'
+    # [regex]::Matches (not the singular Match) -- a pattern that isn't
+    # specific enough to this vendor's page can match more than one real
+    # link (e.g. an x86 build alongside x64, or last release still listed
+    # next to the current one). Match would silently take whichever one
+    # happens to come first in the HTML, which can just as easily be the
+    # wrong architecture or a stale version -- fail loudly instead so a
+    # human tightens the pattern, rather than shipping a wrong download
+    # silently.
+    $matches = [regex]::Matches($page.Content, '${linkPattern.replace(/'/g, "''")}')
+    if ($matches.Count -ne 1) {
+        throw "Expected exactly one link on ${pageUrl} to match the (?<url>...)/(?<version>...) pattern, found $($matches.Count) -- the vendor's page layout may have changed, or the pattern isn't specific enough (e.g. matches more than one architecture/variant); update this au_GetLatest by re-running inspect_download_page against it."
+    }
+    $match = $matches[0]
+    if (-not $match.Groups['url'].Success -or -not $match.Groups['version'].Success) {
+        throw "The pattern matched on ${pageUrl} but is missing its (?<url>...)/(?<version>...) named groups -- update this au_GetLatest by re-running inspect_download_page against it."
+    }
+    # Real HTML source can legally write a literal '&' in an href as
+    # '&amp;' -- decode before resolving, or a signed/tokenized download
+    # URL's query string comes out corrupted (same fix as
+    # inspect_download_page's own href handling, see its doc comment).
+    $decodedUrl = [System.Net.WebUtility]::HtmlDecode($match.Groups['url'].Value)
+    # Resolve a relative href (e.g. '/downloads/app-1.2.3.exe') against the
+    # page's own URL -- real vendor pages mix both absolute and relative
+    # links, confirmed by testing inspect_download_page against several.
+    $url = [System.Uri]::new([System.Uri]'${pageUrl}', $decodedUrl).AbsoluteUri
+
+    return @{
+        URL32   = $url
+        Version = $match.Groups['version'].Value
+    }
+}`;
+}
+
 export async function handler({
   package_id,
   owner_team,
@@ -382,6 +459,8 @@ export async function handler({
   dependencies,
   package_kind,
   binary_name,
+  au_getlatest_page_url,
+  au_getlatest_link_pattern,
 }) {
   const effectivePackageKind = package_kind || "installer";
   const templateDir = path.join(REPO_ROOT, "internal", "_template");
@@ -622,6 +701,20 @@ Get-ChocolateyWebFile @packageArgs
       // downloads and hashes the real asset itself.
       [/update -ChecksumFor none/, "update -ChecksumFor 32"],
     ]);
+  } else if (!usedEvergreen && !usedNexusGeneric && au_getlatest_page_url && au_getlatest_link_pattern) {
+    // The calling agent read the real page itself (inspect_download_page)
+    // and inferred a real link pattern -- a genuine scrape, not the blind
+    // package-id guess below. See buildHtmlScrapeGetLatest's own doc
+    // comment for why this exists at all and its honest limits.
+    await replaceInFile(path.join(targetDir, "update.ps1"), [
+      [
+        /function global:au_GetLatest \{[\s\S]*?\n\}/,
+        buildHtmlScrapeGetLatest(au_getlatest_page_url, au_getlatest_link_pattern),
+      ],
+      // Same reasoning as the GitHub Releases path above: nothing here
+      // returns a real Checksum32, so AU needs to compute it itself.
+      [/update -ChecksumFor none/, "update -ChecksumFor 32"],
+    ]);
   } else if (!usedEvergreen && !usedNexusGeneric) {
     // Genuinely not a github.com source (an internal file share, a vendor
     // page with no GitHub Releases at all, etc.) — nothing as reliable as
@@ -657,7 +750,9 @@ Get-ChocolateyWebFile @packageArgs
               ? `evergreen_app_name given but lookup failed (${evergreenError}) — fell back to the generic placeholder`
               : githubRepo
                 ? `real GitHub Releases API call against ${githubRepo.owner}/${githubRepo.repo} — still has a CHANGE_ME_ASSET_PATTERN placeholder for the real asset name, fill in from https://github.com/${githubRepo.owner}/${githubRepo.repo}/releases/latest`
-                : "generic HTML-scrape placeholder — no evergreen_app_name given and source_url isn't a github.com repo",
+                : au_getlatest_page_url && au_getlatest_link_pattern
+                  ? `scrapes ${au_getlatest_page_url} using a link pattern inferred from inspect_download_page's real output — one page snapshot, not a tested version history; confirm it still matches after the vendor's next real release`
+                  : "generic HTML-scrape placeholder — no evergreen_app_name given, source_url isn't a github.com repo, and no au_getlatest_page_url/au_getlatest_link_pattern was inferred from inspect_download_page",
         package_kind: effectivePackageKind,
         binary_name: effectivePackageKind === "portable" ? effectiveBinaryName : undefined,
         file_type: effectivePackageKind === "portable" ? undefined : evergreenFileType || "exe (default)",
